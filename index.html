@@ -55,7 +55,7 @@ main{max-width:1060px;margin:0 auto;padding:16px}
 .prog{flex:1;min-width:80px;height:10px;background:#e9e4da;border-radius:6px;overflow:hidden}
 .prog i{display:block;height:100%;width:0;background:var(--ok)}
 .count{font-weight:700;color:var(--muted);font-size:14px;min-width:50px;text-align:right}
-.steps{display:flex;gap:6px;flex-wrap:wrap}
+.steps{display:flex;gap:6px;flex-wrap:wrap}.steps[hidden]{display:none}
 .mic2{display:none}.mic2.on{background:#e6f4ea}
 .steps button{border:2px solid var(--line);background:#fff;border-radius:12px;padding:7px 12px;font:inherit;font-weight:600;font-size:14px;cursor:pointer;color:var(--ink)}
 .steps button.sel{border-color:var(--r);background:#edf2ff}
@@ -117,8 +117,8 @@ main{max-width:1060px;margin:0 auto;padding:16px}
 /* bàn tay chỉ ngón */
 .srow{display:flex;align-items:center;border-top:1px solid var(--line)}
 .srow .status{border-top:0;flex:1}
-#hands{display:flex;gap:4px;padding:2px 10px}
-#hands svg{width:86px;height:64px}
+#hands{display:flex;gap:6px;padding:0 0 4px;min-height:74px}
+#hands svg{width:100px;height:74px}
 #hands .off{opacity:.25}
 .fing{fill:#f3e6d8;stroke:#c9a98c;stroke-width:1.2}
 .fing.on{fill:#e03131;stroke:#a51111}
@@ -136,14 +136,14 @@ main{max-width:1060px;margin:0 auto;padding:16px}
 @media (orientation:portrait) and (max-width:700px){#lesson .rotate{display:block}}
 /* Điện thoại xoay ngang: thu gọn để vừa màn hình */
 @media (max-height:500px){
-  #hands svg{width:44px;height:33px}
+  #hands svg{width:54px;height:40px}#hands{min-height:40px;padding:0}
   header{padding:4px 12px}.logo{font-size:16px}.btn{padding:5px 10px;font-size:14px}
   body.inlesson header{display:none}body.inlesson .mic2{display:inline-flex}
   main{padding:6px 10px}.topbar{margin-bottom:4px;flex-wrap:nowrap;gap:6px}.topbar h2,.count{display:none}.prog{min-width:30px}
   #lesson .tip,.kbhint,#lesson .rotate{display:none}
   .steps{flex-wrap:nowrap}.steps button{padding:4px 7px;font-size:12px}
-  #staff{height:136px}.status{min-height:26px;padding:3px 12px;font-size:13px}.status.big{font-size:15px}
-  .ctrls{margin:4px 0;gap:6px}.ctrls select{padding:4px 6px;font-size:13px}.kb{height:112px}
+  #staff{height:112px}.status{min-height:26px;padding:3px 12px;font-size:13px}.status.big{font-size:15px}
+  .ctrls{margin:4px 0;gap:6px}.ctrls select{padding:4px 6px;font-size:13px}.kb{height:100px}
 }
 </style>
 </head>
@@ -194,7 +194,8 @@ main{max-width:1060px;margin:0 auto;padding:16px}
     <div class="tip" id="lTip"></div>
     <div class="panel">
       <svg id="staff"></svg>
-      <div class="srow"><div class="status" id="lStatus"></div><div id="hands"></div></div>
+      <div id="hands"></div>
+      <div class="srow"><div class="status" id="lStatus"></div></div>
     </div>
     <div class="ctrls">
       <button class="btn primary" id="playBtn" onclick="togglePlay()">▶ Bắt đầu</button>
@@ -630,7 +631,8 @@ function renderStaff(){
   $('#staff').classList.toggle('nonames',!$('#showNames').checked);
   fitStaff();
 }
-function fitStaff(){const r=$('#root');if(!r)return;const h=$('#staff').clientHeight||290;r.setAttribute('transform',`scale(${h/290})`);}
+function fitStaff(){const r=$('#root');if(!r)return;const h=$('#staff').clientHeight||290,k=h/290;r.setAttribute('transform',`scale(${k})`);
+  const hs=$('#hands'),w=(hs.querySelector('svg')||{}).clientWidth||100;hs.style.paddingLeft=Math.max(4,X0*k-w-3)+'px';}
 window.addEventListener('resize',fitStaff);
 function moveStaff(beat){const ng=$('#ng');if(ng)ng.style.transform=`translateX(${X0-beat*P()}px)`;}
 function range(){
@@ -851,9 +853,38 @@ function endTimeline(){
   showResult(stars,`Điểm: ${pct}%`,`Hoàn hảo ${st.perfect} · Tốt ${st.good} · Trượt ${st.miss}${st.wrong?' · Bấm nhầm '+st.wrong:''}.`+(stars<3?(parseFloat($('#speedSel').value)<1&&stars>=2?' Thử tăng tốc độ nhé!':' Chơi lại để đạt 3 sao.'):' Tuyệt vời!'));
 }
 
+/* ================= CHÚC MỪNG: vỗ tay + nhạc + pháo giấy ================= */
+function applause(stars){
+  const ctx=ensureCtx(),out=ctx.createGain();out.gain.value=stars>=3?0.9:stars===2?0.7:0.45;out.connect(ctx.destination);
+  /* ta-da */
+  const fan=stars>=2?[60,64,67,72,76,79,84]:[60,64,67,72];fan.forEach((m,i)=>playTone(m,0.05+i*0.09,out,i===fan.length-1?1.6:0.5,0.18));
+  if(stars<1)return;
+  /* tiếng vỗ tay: nhiều tiếng "bốp" ngắn ngẫu nhiên */
+  const n=stars>=3?260:stars===2?170:90,dur=stars>=3?3:2.4;
+  for(let i=0;i<n;i++){const t=0.5+Math.random()*dur*(Math.random()<0.7?0.6:1),src=ctx.createBufferSource();src.buffer=noiseBuf();
+    const bp=ctx.createBiquadFilter();bp.type='bandpass';bp.frequency.value=900+Math.random()*1600;bp.Q.value=1.2;
+    const g=ctx.createGain(),tt=ctx.currentTime+t,v=0.12+Math.random()*0.18;g.gain.setValueAtTime(0.0001,tt);g.gain.exponentialRampToValueAtTime(v,tt+0.004);g.gain.exponentialRampToValueAtTime(0.0001,tt+0.06+Math.random()*0.05);
+    src.connect(bp);bp.connect(g);g.connect(out);src.start(tt,Math.random()*0.3);src.stop(tt+0.13);}
+}
+function confetti(stars){
+  if(stars<1)return;const c=document.createElement('canvas');c.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:70';
+  c.width=innerWidth;c.height=innerHeight;document.body.appendChild(c);const g=c.getContext('2d');
+  const cols=['#f59f00','#3b5bdb','#e8590c','#2f9e44','#e03131','#7048e8','#15aabf'];
+  const ps=Array.from({length:stars*60},()=>({x:Math.random()*c.width,y:-20-Math.random()*c.height*0.5,vx:(Math.random()-0.5)*3,vy:2+Math.random()*3,r:Math.random()*6.3,vr:(Math.random()-0.5)*0.3,w:6+Math.random()*6,h:8+Math.random()*8,col:cols[Math.floor(Math.random()*cols.length)]}));
+  const t0=performance.now();(function f(now){const el=now-t0;g.clearRect(0,0,c.width,c.height);
+    ps.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=0.04;p.r+=p.vr;g.save();g.translate(p.x,p.y);g.rotate(p.r);g.globalAlpha=el>3000?Math.max(0,1-(el-3000)/800):1;g.fillStyle=p.col;g.fillRect(-p.w/2,-p.h/2,p.w,p.h);g.restore();});
+    if(el<3800)requestAnimationFrame(f);else c.remove();})(t0);
+}
+const CHEERS={3:['Tuyệt vời, {n}! 👏','Xuất sắc, {n}! Đúng là nghệ sĩ nhí! 🎉','Hoàn hảo! {n} chơi hay quá! 🌟'],
+  2:['Giỏi lắm, {n}! 👍','Rất tốt, {n}! Thêm chút nữa là 3 sao!','Tiến bộ rõ rệt, {n}! 💪'],
+  1:['Hoàn thành rồi, {n}! Cố lên! 😊','Mỗi lần tập là một lần giỏi hơn, {n}!','Làm tốt lắm, {n}! Chơi lại sẽ hay hơn nữa!'],
+  0:['Không sao đâu, {n}! Thử tốc độ chậm hơn nhé 🐢','Bài này khó đấy — tập thêm chút là được, {n}!']};
+function cheer(stars){const a=CHEERS[Math.max(0,Math.min(3,stars))];return a[Math.floor(Math.random()*a.length)].replace('{n}',curProf().name);}
+function celebrate(stars){try{applause(stars);confetti(stars);}catch(e){}}
+
 /* ================= KẾT QUẢ ================= */
 function showResult(stars,title,text){
-  $('#rStars').innerHTML=starsHtml(stars);$('#rTitle').textContent=title;$('#rText').textContent=text;
+  $('#rStars').innerHTML=starsHtml(stars);$('#rTitle').textContent=cheer(stars);$('#rText').textContent=(/^Điểm/.test(title)?title+' · ':'')+text;celebrate(stars);
   const it=S.item;let nx=null,label='Tiếp →';
   if(it.kind==='song'){const i=STEPS.findIndex(s=>s.k===S.stepKey);if(i<STEPS.length-1){nx=()=>{$('#result').hidden=true;selectStep(STEPS[i+1].k);};label='Bước '+(i+2)+': '+STEPS[i+1].label+' →';}else{const j=SONGS.indexOf(it);if(SONGS[j+1]){nx=()=>openItem(SONGS[j+1].id);label='Bài hát tiếp →';}}}
   else{const j=LESSONS.indexOf(it);const n=LESSONS[j+1]||SONGS[0];nx=()=>openItem(n.id);label=LESSONS[j+1]?'Bài tiếp →':'Sang bài hát →';}
@@ -911,7 +942,7 @@ function handSVG(hand,on){
   for(let i=0;i<5;i++){const f=i+1,x=xs[i],h=len[i],y=28-h,rot=i===0?(R?-28:28):0;
     s+=`<g transform="rotate(${rot} ${x} 32)"><rect class="fing ${on.has(f)?'on':''}" x="${x-4.5}" y="${y}" width="9" height="${h+8}" rx="4.5"/>${on.has(f)?`<text class="fnum" x="${x}" y="${y+9}">${f}</text>`:''}</g>`;}
   s+=`<text x="31" y="41" font-size="8" text-anchor="middle" fill="${R?'#3b5bdb':'#e8590c'}" font-weight="700">${R?'PHẢI':'TRÁI'}</text></svg>`;return s;}
-function showHands(evs){const el=$('#hands');if(!el)return;const L=new Set(),Rr=new Set();evs.forEach(n=>{if(n.f)(n.hand==='R'?Rr:L).add(n.f);});el.innerHTML=handSVG('L',L)+handSVG('R',Rr);}
+function showHands(evs){const el=$('#hands');if(!el)return;const L=new Set(),Rr=new Set();evs.forEach(n=>{if(n.f)(n.hand==='R'?Rr:L).add(n.f);});el.innerHTML=handSVG('L',L)+handSVG('R',Rr);fitStaff();}
 
 /* ================= HIỆU CHỈNH THEO ĐÀN ================= */
 const CAL={on:false,until:0,samples:[]};
