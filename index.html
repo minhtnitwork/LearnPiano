@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Học Piano">
+<meta name="theme-color" content="#3b5bdb">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Học Piano</title>
+<style>
+:root{--bg:#f6f2ea;--card:#fff;--ink:#1f2430;--muted:#6b7280;--r:#3b5bdb;--l:#e8590c;--ok:#2f9e44;--bad:#e03131;--line:#e6dfd2}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"Segoe UI",system-ui,Roboto,sans-serif}
+body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+header{display:flex;align-items:center;gap:10px;padding:8px 16px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;flex-wrap:wrap}
+.logo{font-weight:800;font-size:19px;letter-spacing:-.3px;cursor:pointer}
+.logo span{color:var(--r)}
+.spacer{flex:1}
+.btn{border:0;border-radius:12px;padding:9px 14px;font:inherit;font-weight:600;cursor:pointer;background:#eef0f4;color:var(--ink);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn.primary{background:var(--r);color:#fff}
+.btn.ghost{background:transparent;padding-left:4px}
+.btn.on{background:#e6f4ea;color:var(--ok)}
+.meter{width:60px;height:8px;background:#e9ecef;border-radius:4px;overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--ok)}
+select{font:inherit;font-size:14px;padding:7px 8px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--ink)}
+label.small{font-size:13px;color:var(--muted);display:inline-flex;align-items:center;gap:6px}
+main{max-width:1060px;margin:0 auto;padding:16px}
+.screen[hidden]{display:none!important}
+.hero{display:flex;gap:16px;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#3b5bdb,#5f3dc4);color:#fff;border-radius:20px;padding:22px 24px;margin-bottom:18px;flex-wrap:wrap}
+.hero h1{margin:0 0 6px;font-size:24px}
+.hero p{margin:0;opacity:.92;max-width:580px;line-height:1.5;font-size:15px}
+.hero .btn{background:#fff;color:var(--r)}
+.chapter{margin:22px 0 10px;font-weight:700;font-size:17px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;cursor:pointer;transition:transform .12s,box-shadow .12s}
+.card:active,.card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.07)}
+.card .no{font-size:12px;color:var(--muted);font-weight:700}
+.card h3{margin:4px 0;font-size:16px}
+.card p{margin:0;color:var(--muted);font-size:13px}
+.card .stars{margin-top:8px;font-size:18px;letter-spacing:2px;color:#d0d4da}
+.stars b,.big b{color:#f59f00;font-weight:400}
+.card .path{margin-top:10px;display:flex;gap:4px}
+.card .path span{font-size:15px;width:28px;height:28px;border-radius:8px;background:#f1f3f5;display:flex;align-items:center;justify-content:center;filter:grayscale(1);opacity:.45}
+.card .path span.ok{filter:none;opacity:1;background:#e6f4ea}
+.card.song{border-left:5px solid #7048e8}
+.tag{display:inline-block;font-size:11px;font-weight:700;border-radius:6px;padding:2px 6px;margin-left:6px;vertical-align:middle}
+.tag.R{background:#e7ecff;color:var(--r)}.tag.L{background:#fff0e6;color:var(--l)}.tag.B{background:#f3f0ff;color:#5f3dc4}.tag.S{background:#fff3bf;color:#a76a00}
+.topbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.topbar h2{margin:0;font-size:18px}
+.prog{flex:1;min-width:80px;height:10px;background:#e9e4da;border-radius:6px;overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:var(--ok)}
+.count{font-weight:700;color:var(--muted);font-size:14px;min-width:50px;text-align:right}
+.steps{display:flex;gap:6px;flex-wrap:wrap}
+.mic2{display:none}.mic2.on{background:#e6f4ea}
+.steps button{border:2px solid var(--line);background:#fff;border-radius:12px;padding:7px 12px;font:inherit;font-weight:600;font-size:14px;cursor:pointer;color:var(--ink)}
+.steps button.sel{border-color:var(--r);background:#edf2ff}
+.steps button .ck{color:var(--ok);margin-left:4px}
+.tip{background:#fff8e6;border:1px solid #f3e2b3;border-radius:12px;padding:9px 14px;font-size:14px;line-height:1.5;margin-bottom:10px}
+.panel{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+#staff{display:block;width:100%;height:290px}
+#staff .sl{stroke:#9aa0a6;stroke-width:1.2}
+#staff .bar{stroke:#ced4da;stroke-width:1.5}
+#staff .cursor{fill:rgba(59,91,219,.09)}
+#ng{transition:transform .28s ease}
+#staff.live #ng{transition:none}
+.ev ellipse{fill:#343a40}
+.ev .tail{fill:#343a40;opacity:.18}
+.ev .fgt{font-size:13px;font-weight:700;fill:#868e96;text-anchor:middle}
+.ev .acc{font-size:16px;fill:#343a40}
+.ev.off{opacity:.2}
+.ev.cur.R ellipse,.ev.cur.R .tail{fill:var(--r)} .ev.cur.L ellipse,.ev.cur.L .tail{fill:var(--l)}
+.ev.cur .tail{opacity:.35}
+.ev.cur .fgt{fill:var(--ink)}
+.ev.done ellipse,.ev.done .tail{fill:var(--ok)}
+.ev.good ellipse,.ev.good .tail{fill:#94d82d}
+.ev.miss ellipse,.ev.miss .tail{fill:#fa5252}
+.nmt{font-size:13px;fill:#868e96;text-anchor:middle;font-weight:600}
+#staff.nonames .nmt{display:none}
+.clef{font-family:"Apple Symbols","Segoe UI Symbol","Noto Music",serif;fill:#495057}
+.status{padding:9px 14px;border-top:1px solid var(--line);font-weight:600;min-height:42px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:15px}
+.status.bad{color:var(--bad)}
+.status.big{font-size:22px;color:var(--r)}
+.dot{width:12px;height:12px;border-radius:50%;display:inline-block}
+.dot.R{background:var(--r)}.dot.L{background:var(--l)}
+.ctrls{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;align-items:center}
+.ctrls [hidden]{display:none!important}
+.kb{position:relative;height:170px;user-select:none;-webkit-user-select:none;touch-action:none;margin-top:4px}
+.key{position:absolute;top:0;cursor:pointer;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
+.key.w{height:100%;background:#fff;border:1px solid #c9c2b4;border-radius:0 0 8px 8px;z-index:1;padding-bottom:6px}
+.key.b{height:62%;background:#222;border-radius:0 0 5px 5px;z-index:2;padding-bottom:6px}
+.key .nm{font-size:11px;color:#868e96;text-align:center;line-height:1.2}
+.key .nm b{display:block;font-size:9px;color:var(--r)}
+.key .fg{font-weight:800;font-size:15px;margin-bottom:6px;color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;visibility:hidden}
+.key.exp .fg{visibility:visible}
+.key.w.exp.R{background:#dbe4ff}.key.w.exp.L{background:#ffe8d9}
+.key.b.exp.R{background:#364fc7}.key.b.exp.L{background:#d9480f}
+.key.exp.R .fg{background:var(--r)}.key.exp.L .fg{background:var(--l)}
+.key.live{background:#d3f9d8!important}.key.b.live{background:#2f9e44!important}
+@keyframes hitA{0%{background:#8ce99a}100%{}} @keyframes badA{0%{background:#ffa8a8}100%{}}
+.key.hit{animation:hitA .45s}.key.bad{animation:badA .45s}
+.kbhint{font-size:12px;color:var(--muted);padding:6px 2px}
+.rotate{display:none;background:#e7f5ff;border:1px solid #a5d8ff;border-radius:12px;padding:8px 12px;font-size:14px;margin-bottom:10px}
+.modal{position:fixed;inset:0;background:rgba(20,22,30,.45);display:flex;align-items:center;justify-content:center;z-index:50}
+.modal[hidden]{display:none}
+.mbox{background:#fff;border-radius:20px;padding:24px;max-width:400px;width:92%;text-align:center}
+.mbox .big{font-size:44px;letter-spacing:6px;color:#dee2e6}
+.mbox h3{margin:6px 0}
+.mbox p{color:var(--muted);margin:0 0 16px;line-height:1.5}
+.mbox .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.free-note{font-size:60px;font-weight:800;text-align:center;padding:20px 10px 6px;min-height:110px;color:var(--r)}
+.free-sub{text-align:center;color:var(--muted);padding-bottom:14px;min-height:36px}
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#212529;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:60;max-width:90%;text-align:center}
+#toast.show{opacity:1}
+@media (max-width:420px){.meter{display:none}}
+@media (max-width:700px){.kb{height:130px}.key .nm{font-size:9px}.key .fg{width:19px;height:19px;font-size:12px}.hero h1{font-size:20px}header .lbl{display:none}}
+@media (orientation:portrait) and (max-width:700px){#lesson .rotate{display:block}}
+/* Điện thoại xoay ngang: thu gọn để vừa màn hình */
+@media (max-height:500px){
+  header{padding:4px 12px}.logo{font-size:16px}.btn{padding:5px 10px;font-size:14px}
+  body.inlesson header{display:none}body.inlesson .mic2{display:inline-flex}
+  main{padding:6px 10px}.topbar{margin-bottom:4px;flex-wrap:nowrap;gap:6px}.topbar h2,.count{display:none}.prog{min-width:30px}
+  #lesson .tip,.kbhint,#lesson .rotate{display:none}
+  .steps{flex-wrap:nowrap}.steps button{padding:4px 7px;font-size:12px}
+  #staff{height:136px}.status{min-height:26px;padding:3px 12px;font-size:13px}.status.big{font-size:15px}
+  .ctrls{margin:4px 0;gap:6px}.ctrls select{padding:4px 6px;font-size:13px}.kb{height:112px}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo" onclick="go('home')">🎹 Học <span>Piano</span></div>
+  <div class="spacer"></div>
+  <label class="small"><span class="lbl">Độ nhạy</span>
+    <select id="sens">
+      <option value="low">Thấp</option>
+      <option value="mid" selected>Vừa</option>
+      <option value="high">Cao</option>
+    </select>
+  </label>
+  <button class="btn" id="micBtn">🎤 Bật micro</button>
+  <div class="meter" title="Âm lượng micro"><i id="meter"></i></div>
+</header>
+
+<main>
+  <!-- TRANG CHỦ -->
+  <section class="screen" id="home">
+    <div class="hero">
+      <div>
+        <h1>Học đàn piano từ con số 0</h1>
+        <p>Đặt điện thoại cạnh đàn, bật micro — app nghe tiếng đàn và tự chấm. Học bài cơ bản trước, rồi tập bài hát theo 5 bước: nghe mẫu → tay phải → tay trái → hai tay → chơi cả bài theo nhịp có nhạc đệm.</p>
+      </div>
+      <button class="btn" onclick="go('free')">🎧 Kiểm tra micro</button>
+    </div>
+    <div id="chapters"></div>
+  </section>
+
+  <!-- BÀI HỌC / BÀI HÁT -->
+  <section class="screen" id="lesson" hidden>
+    <div class="rotate">📱 Xoay ngang điện thoại để thấy đủ bàn phím.</div>
+    <div class="topbar">
+      <button class="btn ghost" onclick="go('home')">←</button>
+      <h2 id="lTitle"></h2>
+      <div class="steps" id="stepBar"></div>
+      <div class="prog"><i id="lProg"></i></div>
+      <div class="count" id="lCount"></div>
+      <button class="btn mic2" onclick="AU.on?micOff():micOn()">🎤</button>
+    </div>
+    <div class="tip" id="lTip"></div>
+    <div class="panel">
+      <svg id="staff"></svg>
+      <div class="status" id="lStatus"></div>
+    </div>
+    <div class="ctrls">
+      <button class="btn primary" id="playBtn" onclick="togglePlay()">▶ Bắt đầu</button>
+      <button class="btn" id="demoBtn" onclick="toggleDemo()">▶ Nghe mẫu</button>
+      <button class="btn" id="restartBtn" onclick="restart()">↺ Làm lại</button>
+      <select id="secSel" title="Chọn đoạn"></select>
+      <select id="speedSel" title="Tốc độ">
+        <option value="0.5">Tốc độ 50%</option>
+        <option value="0.75">Tốc độ 75%</option>
+        <option value="1">Tốc độ 100%</option>
+      </select>
+      <select id="handSel" title="Tay chơi">
+        <option value="both">Hai tay</option>
+        <option value="R">Chỉ tay phải (máy đánh tay trái)</option>
+        <option value="L">Chỉ tay trái (máy đánh tay phải)</option>
+      </select>
+      <label class="small" id="metroLbl"><input type="checkbox" id="metro" checked> Tích tắc</label>
+      <label class="small"><input type="checkbox" id="showNames" checked> Tên nốt</label>
+    </div>
+    <div class="panel" style="padding:8px 8px 0">
+      <div class="kb" id="kbL"></div>
+      <div class="kbhint">Chưa có đàn? Chạm phím trên màn hình. Trên máy tính: <b>Z X C V B N M</b> = Đô→Si thấp · <b>Q W E R T Y U I</b> = Đô giữa→Đô cao.</div>
+    </div>
+  </section>
+
+  <!-- KIỂM TRA MICRO / CHƠI TỰ DO -->
+  <section class="screen" id="free" hidden>
+    <div class="topbar">
+      <button class="btn ghost" onclick="go('home')">←</button>
+      <h2>Kiểm tra micro · Chơi tự do</h2>
+    </div>
+    <div class="tip">Bấm từng phím trên đàn thật — tên nốt app nghe được sẽ hiện lên. Nếu app không bắt được nốt, chọn <b>Độ nhạy: Cao</b>; nếu nhận nhầm khi không ai chơi, chọn <b>Thấp</b>. Đặt điện thoại cách đàn khoảng 0,5–1 m. Trên iPhone, tắt chế độ <b>Im lặng</b> để nghe được tiếng mẫu.</div>
+    <div class="panel">
+      <div class="free-note" id="fNote">—</div>
+      <div class="free-sub" id="fSub">Bật micro rồi bấm một phím đàn</div>
+    </div>
+    <div class="panel" style="padding:8px 8px 0;margin-top:12px">
+      <div class="kb" id="kbF"></div>
+      <div class="kbhint">Phím sáng xanh lá = app đang nghe thấy nốt đó.</div>
+    </div>
+  </section>
+</main>
+
+<div class="modal" id="result" hidden>
+  <div class="mbox">
+    <div class="big" id="rStars"></div>
+    <h3 id="rTitle"></h3>
+    <p id="rText"></p>
+    <div class="row">
+      <button class="btn" onclick="restart()">↺ Chơi lại</button>
+      <button class="btn" onclick="go('home')">Danh sách</button>
+      <button class="btn primary" id="rNext">Tiếp →</button>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+/* =====================================================================
+   DỮ LIỆU
+   - Bài cơ bản kiểu cũ: seq = các bước cách nhau dấu cách, "E4:3" = Mi4 ngón 3,
+     nhiều nốt cùng lúc nối bằng "+". Nốt dưới Đô giữa tự là tay trái.
+   - Bài có nhịp: rh / lh = "Nốt:ngón/độ dài". Độ dài tính theo phách
+     (1 = nốt đen, 2 = nốt trắng, 4 = nốt tròn, 0.5 = móc đơn, 1.5 = đen chấm).
+     "R/1" = dấu lặng. "|" chỉ để dễ đọc (vạch nhịp).
+   - Tất cả bài hát dưới đây đều đã hết bản quyền (dân ca / nhạc cổ điển).
+   ===================================================================== */
+const CHAPTERS = [
+ {title:'Chương 1 · Làm quen phím đàn', lessons:[
+  {id:'l1',title:'Tìm nốt Đô giữa',sub:'Nốt đầu tiên của bạn',
+   tip:'Tìm nhóm <b>2 phím đen</b> ở khoảng giữa đàn. Phím trắng ngay bên trái nhóm đó là <b>Đô giữa</b>. Đặt ngón cái tay phải (ngón 1) lên đó và bấm mỗi khi nốt xanh đến lượt.',
+   seq:'C4:1 C4:1 C4:1 C4:1 C4:1 C4:1'},
+  {id:'l2',title:'Đô – Rê – Mi',sub:'3 ngón đầu tay phải',
+   tip:'Ngón 1 trên Đô, ngón 2 trên Rê, ngón 3 trên Mi. Cổ tay thả lỏng, các ngón hơi cong như đang cầm quả bóng.',
+   seq:'C4:1 D4:2 E4:3 D4:2 C4:1 E4:3 D4:2 C4:1 C4:1 D4:2 E4:3 E4:3 D4:2 C4:1'},
+  {id:'l3',title:'Năm ngón tay phải',sub:'Thế tay Đô: từ Đô đến Sol',
+   tip:'Mỗi ngón phụ trách một phím: 1-Đô, 2-Rê, 3-Mi, 4-Fa, 5-Sol. Không nhấc cả bàn tay, chỉ cử động ngón.',
+   seq:'C4:1 D4:2 E4:3 F4:4 G4:5 F4:4 E4:3 D4:2 C4:1 E4:3 G4:5 E4:3 C4:1'},
+ ]},
+ {title:'Chương 2 · Tay trái', lessons:[
+  {id:'l7',title:'Năm ngón tay trái',sub:'Thế tay Đô thấp',
+   tip:'Tay trái đặt ở <b>Đô thấp</b> (cách Đô giữa 7 phím trắng về bên trái). Ngón út (5) trên Đô, ngón cái (1) trên Sol. Tay trái cũng đếm ngón cái là 1.',
+   seq:'C3:5 D3:4 E3:3 F3:2 G3:1 F3:2 E3:3 D3:4 C3:5 E3:3 G3:1 E3:3 C3:5'},
+  {id:'l9',title:'Nốt trầm giữ nhịp',sub:'Đô – Mi – Sol tay trái',
+   tip:'Đây là các nốt bè trầm sẽ dùng khi chơi hai tay. Bấm chắc, đều.',
+   seq:'C3:5 G3:1 C3:5 G3:1 C3:5 E3:3 G3:1 E3:3 C3:5 G3:1 C3:5'},
+ ]},
+ {title:'Chương 3 · Hai tay', lessons:[
+  {id:'l10',title:'Luân phiên hai tay',sub:'Tay trái rồi tay phải',
+   tip:'Tay trái ở Đô thấp, tay phải ở Đô giữa. Nốt <b style="color:#e8590c">cam</b> là tay trái, nốt <b style="color:#3b5bdb">xanh</b> là tay phải.',
+   seq:'C3:5 C4:1 D3:4 D4:2 E3:3 E4:3 F3:2 F4:4 G3:1 G4:5 F3:2 F4:4 E3:3 E4:3 D3:4 D4:2 C3:5 C4:1'},
+  {id:'l11',title:'Bấm cùng lúc',sub:'Hai nốt một lần',
+   tip:'Hai nốt xếp chồng nhau = bấm <b>cùng một lúc</b>. Lệch một chút cũng không sao, app chờ đủ cả hai nốt.',
+   seq:'C3:5+E4:3 D3:4+F4:4 E3:3+G4:5 D3:4+F4:4 C3:5+E4:3 E3:3+G4:5 G3:1+D4:2 C3:5+E4:3'},
+  {id:'l17',title:'Hợp âm Đô – Fa – Sol',sub:'3 nốt tay trái cùng lúc',
+   tip:'Hợp âm = nhiều nốt bấm cùng lúc. Đô: ngón 5-3-1 · Fa: 5-2-1 · Sol: 5-2-1 (ngón út lùi xuống Si). Ba hợp âm này đệm được rất nhiều bài hát.',
+   seq:'C3:5+E3:3+G3:1 C3:5+F3:2+A3:1 B2:5+F3:2+G3:1 C3:5+E3:3+G3:1 C3:5+F3:2+A3:1 C3:5+E3:3+G3:1 B2:5+F3:2+G3:1 C3:5+E3:3+G3:1'},
+ ]},
+ {title:'Chương 4 · Nhịp & trường độ', lessons:[
+  {id:'r1',play:true,bpm:72,title:'Nốt đen & nốt trắng',sub:'Chơi theo tiếng tích tắc',
+   tip:'Nốt đen = 1 phách (1 tiếng tích). Nốt có <b>vệt dài</b> phía sau = nốt trắng, giữ phím 2 phách. Máy đếm 4 tiếng trước khi bắt đầu.',
+   rh:'C4:1 C4:1 C4:1/2 | D4:2 D4:2 D4:2/2 | E4:3 D4:2 C4:1/2 | E4:3 D4:2 C4:1/2'},
+  {id:'r2',play:true,bpm:80,title:'Hot Cross Buns',sub:'Nốt móc đơn – nửa phách',
+   tip:'Ô nhịp thứ 3 có các nốt sát nhau: mỗi nốt chỉ nửa phách — bấm nhanh gấp đôi.',
+   rh:'E4:3 D4:2 C4:1/2 | E4:3 D4:2 C4:1/2 | C4:1/0.5 C4:1/0.5 C4:1/0.5 C4:1/0.5 D4:2/0.5 D4:2/0.5 D4:2/0.5 D4:2/0.5 | E4:3 D4:2 C4:1/2'},
+  {id:'r3',play:true,bpm:72,title:'Hai tay theo nhịp',sub:'Tay trái giữ nốt tròn',
+   tip:'Tay trái bấm nốt tròn (giữ 4 phách) ở đầu mỗi ô nhịp, tay phải chơi giai điệu cùng lúc.',
+   rh:'E4:3 D4:2 C4:1 D4:2 | E4:3 E4:3 E4:3/2 | D4:2 D4:2 D4:2/2 | C4:1/4',
+   lh:'C3:5/4 | C3:5/4 | G3:1/4 | C3:5/4'},
+ ]},
+];
+
+const SONGS = [
+ {id:'s_twinkle',title:'Twinkle Twinkle Little Star',sub:'Dân ca · Dễ',bpm:96,
+  tip:'Nốt La: duỗi ngón 5 từ Sol sang La rồi về.',
+  rh:'C4:1 C4:1 G4:5 G4:5 | A4:5 A4:5 G4:5/2 | F4:4 F4:4 E4:3 E4:3 | D4:2 D4:2 C4:1/2 | G4:5 G4:5 F4:4 F4:4 | E4:3 E4:3 D4:2/2 | G4:5 G4:5 F4:4 F4:4 | E4:3 E4:3 D4:2/2 | C4:1 C4:1 G4:5 G4:5 | A4:5 A4:5 G4:5/2 | F4:4 F4:4 E4:3 E4:3 | D4:2 D4:2 C4:1/2',
+  lh:'C3:5/4 | F3:2/2 C3:5/2 | F3:2/2 C3:5/2 | G3:1/2 C3:5/2 | C3:5/2 F3:2/2 | C3:5/2 G3:1/2 | C3:5/2 F3:2/2 | C3:5/2 G3:1/2 | C3:5/4 | F3:2/2 C3:5/2 | F3:2/2 C3:5/2 | G3:1/2 C3:5/2'},
+ {id:'s_mary',title:'Mary Had a Little Lamb',sub:'Dân ca Mỹ · Dễ',bpm:100,
+  tip:'Ô nhịp 1 và 5 có nốt đen chấm (1,5 phách) theo sau là móc đơn.',
+  rh:'E4:3/1.5 D4:2/0.5 C4:1 D4:2 | E4:3 E4:3 E4:3/2 | D4:2 D4:2 D4:2/2 | E4:3 G4:5 G4:5/2 | E4:3/1.5 D4:2/0.5 C4:1 D4:2 | E4:3 E4:3 E4:3 E4:3 | D4:2 D4:2 E4:3 D4:2 | C4:1/4',
+  lh:'C3:5/4 | C3:5/4 | G3:1/4 | C3:5/4 | C3:5/4 | C3:5/4 | G3:1/4 | C3:5/4'},
+ {id:'s_buom',title:'Kìa con bướm vàng',sub:'Giai điệu Frère Jacques · Dễ',bpm:100,
+  tip:'Hai ô nhịp cuối, ngón 1 tay phải lùi xuống Sol thấp (dưới Đô giữa) rồi về.',
+  rh:'C4:1 D4:2 E4:3 C4:1 | C4:1 D4:2 E4:3 C4:1 | E4:3 F4:4 G4:5/2 | E4:3 F4:4 G4:5/2 | G4:5/0.5 A4:5/0.5 G4:5/0.5 F4:4/0.5 E4:3 C4:1 | G4:5/0.5 A4:5/0.5 G4:5/0.5 F4:4/0.5 E4:3 C4:1 | C4:2 G3:1 C4:2/2 | C4:2 G3:1 C4:2/2',
+  lh:'C3:5/2 G3:1/2 | C3:5/2 G3:1/2 | C3:5/2 G3:1/2 | C3:5/2 G3:1/2 | C3:5/2 G3:1/2 | C3:5/2 G3:1/2 | C3:5/4 | C3:5/4'},
+ {id:'s_london',title:'London Bridge',sub:'Dân ca Anh · Dễ',bpm:100,
+  rh:'G4:5/1.5 A4:5/0.5 G4:5 F4:4 | E4:3 F4:4 G4:5/2 | D4:2 E4:3 F4:4/2 | E4:3 F4:4 G4:5/2 | G4:5/1.5 A4:5/0.5 G4:5 F4:4 | E4:3 F4:4 G4:5/2 | D4:2/2 G4:5/2 | E4:3 C4:1/3',
+  lh:'C3:5/4 | C3:5/4 | G3:1/4 | C3:5/4 | C3:5/4 | C3:5/4 | G3:1/4 | C3:5/4'},
+ {id:'s_ode',title:'Ode to Joy',sub:'Beethoven · Dễ',bpm:96,
+  rh:'E4:3 E4:3 F4:4 G4:5 | G4:5 F4:4 E4:3 D4:2 | C4:1 C4:1 D4:2 E4:3 | E4:3/1.5 D4:2/0.5 D4:2/2 | E4:3 E4:3 F4:4 G4:5 | G4:5 F4:4 E4:3 D4:2 | C4:1 C4:1 D4:2 E4:3 | D4:2/1.5 C4:1/0.5 C4:1/2',
+  lh:'C3:5/4 | G3:1/4 | C3:5/4 | G3:1/4 | C3:5/4 | G3:1/4 | C3:5/4 | G3:1/2 C3:5/2'},
+ {id:'s_jingle',title:'Jingle Bells',sub:'J. Pierpont · Vừa',bpm:110,
+  tip:'"Jin-gle all the way": Mi – Sol – Đô (đen chấm) – Rê (móc đơn) – Mi giữ 4 phách.',
+  rh:'E4:3 E4:3 E4:3/2 | E4:3 E4:3 E4:3/2 | E4:3 G4:5 C4:1/1.5 D4:2/0.5 | E4:3/4 | F4:4 F4:4 F4:4/1.5 F4:4/0.5 | F4:4 E4:3 E4:3 E4:3/0.5 E4:3/0.5 | E4:3 D4:2 D4:2 E4:3 | D4:2/2 G4:5/2 | E4:3 E4:3 E4:3/2 | E4:3 E4:3 E4:3/2 | E4:3 G4:5 C4:1/1.5 D4:2/0.5 | E4:3/4 | F4:4 F4:4 F4:4/1.5 F4:4/0.5 | F4:4 E4:3 E4:3 E4:3/0.5 E4:3/0.5 | G4:5 G4:5 F4:4 D4:2 | C4:1/4',
+  lh:'C3:5/4 | C3:5/4 | C3:5/4 | C3:5/4 | F3:2/4 | C3:5/4 | G3:1/4 | G3:1/4 | C3:5/4 | C3:5/4 | C3:5/4 | C3:5/4 | F3:2/4 | C3:5/4 | G3:1/4 | C3:5/4'},
+ {id:'s_bday',title:'Happy Birthday',sub:'Mildred & Patty Hill · Vừa',bpm:96,beats:3,pickup:1,
+  tip:'Nhịp 3/4 (đếm 1-2-3). Có một phím đen: <b>La♯ (Si giáng)</b>. Bốn ô nhịp cuối cần dời tay — chọn ngón thoải mái.',
+  rh:'C4:1/0.75 C4:1/0.25 | D4:2 C4:1 F4:4 | E4:3/2 C4:1/0.75 C4:1/0.25 | D4:2 C4:1 G4:5 | F4:4/2 C4:1/0.75 C4:1/0.25 | C5 A4 F4 | E4 D4 A#4/0.75 A#4/0.25 | A4 F4 G4 | F4/2',
+  lh:'R/1 | F3:2/3 | C3:5/3 | C3:5/3 | F3:2/3 | F3:2/3 | F3:2/3 | F3:2/2 C3:5/1 | F3:2/2'},
+ {id:'s_elise',title:'Für Elise (đoạn mở đầu)',sub:'Beethoven · Khó',bpm:240,beats:6,pickup:2,clickEvery:2,pxb:30,
+  tip:'Tay phải đi qua lại Mi – Rê♯ (phím đen). Tay trái rải 3 nốt rồi tay phải nối tiếp 3 nốt — như hai tay chuyền nhau. Bắt đầu ở tốc độ 50%.',
+  rh:'E5/1 D#5/1 | E5 D#5 E5 B4 D5 C5 | A4/3 C4 E4 A4 | B4/3 E4 G#4 B4 | C5/3 E4 E5 D#5 | E5 D#5 E5 B4 D5 C5 | A4/3 C4 E4 A4 | B4/3 E4 C5 B4 | A4/6',
+  lh:'R/2 | R/6 | A2/1 E3/1 A3/1 R/3 | E2 E3 G#3 R/3 | A2 E3 A3 R/3 | R/6 | A2 E3 A3 R/3 | E2 E3 G#3 R/3 | A2 E3 A3/4'},
+];
+SONGS.forEach(s=>s.kind='song');
+const LESSONS = CHAPTERS.flatMap(c=>c.lessons); LESSONS.forEach(l=>l.kind='lesson');
+const ALL = [...LESSONS,...SONGS];
+const STEPS=[
+ {k:'listen',icon:'🎧',label:'Nghe mẫu',tip:'Nghe cả bài một lần, nhìn nốt chạy trên khuông nhạc.'},
+ {k:'rh',icon:'✋',label:'Tay phải',tip:'Tập tay phải. App chờ bạn bấm đúng từng nốt — không cần vội.'},
+ {k:'lh',icon:'🤚',label:'Tay trái',tip:'Tập tay trái. App chờ bạn bấm đúng từng nốt.'},
+ {k:'both',icon:'🙌',label:'Hai tay',tip:'Ghép hai tay, vẫn chế độ chờ. Có thể chọn từng đoạn để tập riêng.'},
+ {k:'play',icon:'🎵',label:'Cả bài',tip:'Chơi theo nhịp cùng nhạc đệm. Bắt đầu ở 50–75%. <b>Nên đeo tai nghe</b> để micro chỉ nghe tiếng đàn của bạn.'},
+];
+
+/* ================= TIỆN ÍCH NỐT ================= */
+const VI={C:'Đô',D:'Rê',E:'Mi',F:'Fa',G:'Sol',A:'La',B:'Si'};
+const LET=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const OFF={C:0,D:2,E:4,F:5,G:7,A:9,B:11};
+const $=s=>document.querySelector(s);
+function parseNote(s){const m=s.match(/^([A-G])(#?)(\d)$/);if(!m)throw new Error('Nốt sai: '+s);return 12*(+m[3]+1)+OFF[m[1]]+(m[2]?1:0);}
+function isBlack(m){return LET[m%12].length>1;}
+function viName(m){const l=LET[m%12];return VI[l[0]]+(l.length>1?'♯':'');}
+function freq(m){return 440*Math.pow(2,(m-69)/12);}
+function diat(m){return (Math.floor(m/12)-1)*7+'CDEFGAB'.indexOf(LET[m%12][0]);}
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),2800);}
+function store(k,v){try{if(v===undefined)return JSON.parse(localStorage.getItem(k));localStorage.setItem(k,JSON.stringify(v));}catch(e){return null;}}
+function prog(){return store('lp_prog')||{};}
+function saveStars(key,stars){const p=prog();if((p[key]||0)<stars){p[key]=stars;store('lp_prog',p);}}
+function starsHtml(n){return '<b>'+'★'.repeat(n)+'</b>'+'★'.repeat(3-n);}
+
+function parsePart(str,hand){
+  const ev=[];let t=0;if(!str)return ev;
+  str.trim().split(/\s+/).forEach(tok=>{
+    if(!tok||tok==='|')return;
+    const [notes,dur]=tok.split('/');const d=dur?parseFloat(dur):1;
+    if(notes!=='R')notes.split('+').forEach(p=>{const [n,f]=p.split(':');ev.push({t,d,m:parseNote(n),f:f?+f:null,hand});});
+    t+=d;
+  });
+  return ev;
+}
+function itemEvents(it){
+  if(it.seq)return it.seq.trim().split(/\s+/).flatMap((tok,i)=>tok.split('+').map(p=>{const [n,f]=p.split(':');const m=parseNote(n);return {t:i,d:1,m,f:f?+f:null,hand:m<60?'L':'R'};}));
+  return [...parsePart(it.rh,'R'),...parsePart(it.lh,'L')].sort((a,b)=>a.t-b.t||a.m-b.m);
+}
+
+/* ================= ÂM THANH ================= */
+const AU={ctx:null,on:false,noise:0.002,gate:0.006,rms:0,hist:[],lastOnset:-1e9,pendWrong:0,pendIdx:-1,ignoreUntil:0,floor:-120,sens:22,onsetK:1.45,calibUntil:0,calib:[],cache:null};
+const SENS={low:{sens:30,onsetK:1.7},mid:{sens:22,onsetK:1.45},high:{sens:15,onsetK:1.3}};
+function ensureCtx(){if(!AU.ctx)AU.ctx=new (window.AudioContext||window.webkitAudioContext)();if(AU.ctx.state!=='running')AU.ctx.resume();return AU.ctx;}
+/* iPhone: phát 1 đoạn im lặng qua thẻ <audio> để Web Audio vẫn kêu khi bật công tắc im lặng */
+let unlocked=false;
+function unlockAudio(){ensureCtx();if(unlocked)return;unlocked=true;try{const a=document.createElement('audio');a.setAttribute('playsinline','');a.src='data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQQAAACAgICA';a.loop=true;a.volume=0.01;a.play().catch(()=>{});}catch(e){}}
+document.addEventListener('pointerdown',unlockAudio,true);
+function playTone(m,when=0,dest=null,dur=1.3,vol=0.22){
+  const ctx=ensureCtx(),t=ctx.currentTime+Math.max(0,when),f=freq(m);
+  const g=ctx.createGain();g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+0.01);g.gain.exponentialRampToValueAtTime(0.0006,t+dur);
+  g.connect(dest||ctx.destination);
+  [[1,1],[2,0.5],[3,0.22],[4,0.1]].forEach(([h,a])=>{const o=ctx.createOscillator();o.frequency.value=f*h;const og=ctx.createGain();og.gain.value=a;o.connect(og);og.connect(g);o.start(t);o.stop(t+dur+0.05);});
+}
+function click(when,dest,accent){
+  const ctx=AU.ctx,t=ctx.currentTime+Math.max(0,when),o=ctx.createOscillator(),g=ctx.createGain();
+  o.frequency.value=accent?2400:1800;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(accent?0.12:0.06,t+0.002);g.gain.exponentialRampToValueAtTime(0.0001,t+0.04);
+  o.connect(g);g.connect(dest);o.start(t);o.stop(t+0.06);
+}
+
+/* ================= MICRO: nghe & nhận nốt =================
+   - "Onset" = tiếng gõ phím mới, phát hiện từ độ lớn tín hiệu (độ trễ thấp).
+   - FFT 16384 điểm; chấm điểm mỗi nốt theo năng lượng ở tần số gốc + 3 hoạ âm,
+     so với 2 nốt kề bên. App biết trước nốt cần chơi nên chỉ kiểm tra nốt đó
+     có vang lên không — chịu được cả hợp âm 2 tay. */
+async function micOn(){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){toast('Không dùng được micro. Hãy mở app qua địa chỉ https (GitHub Pages) bằng Safari/Chrome.');return;}
+  const ctx=ensureCtx();
+  try{AU.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});}
+  catch(e){toast('Không mở được micro: '+e.message);return;}
+  AU.src=ctx.createMediaStreamSource(AU.stream);
+  AU.an=ctx.createAnalyser();AU.an.fftSize=16384;AU.an.smoothingTimeConstant=0;
+  AU.sm=ctx.createAnalyser();AU.sm.fftSize=1024;
+  AU.src.connect(AU.an);AU.src.connect(AU.sm);
+  AU.fdb=new Float32Array(AU.an.frequencyBinCount);AU.tb=new Float32Array(AU.sm.fftSize);
+  AU.binHz=ctx.sampleRate/AU.an.fftSize;
+  AU.on=true;AU.calib=[];AU.calibUntil=performance.now()+1200;AU.hist=[];
+  toast('Đang đo tiếng ồn phòng… giữ yên lặng 1 giây');
+  updateMicUI();requestAnimationFrame(loop);
+}
+function micOff(){AU.on=false;if(AU.stream)AU.stream.getTracks().forEach(t=>t.stop());if(AU.src)AU.src.disconnect();$('#meter').style.width='0';updateMicUI();}
+function updateMicUI(){const b=$('#micBtn');b.textContent=AU.on?'🎤 Đang nghe':'🎤 Bật micro';b.classList.toggle('on',AU.on);const b2=document.querySelector('.mic2');if(b2)b2.classList.toggle('on',AU.on);if(state.screen==='lesson'&&S.mode==='wait'&&!S.tl)waitStatus();if(state.screen==='free'&&!AU.on){$('#fNote').textContent='—';$('#fSub').textContent='Bật micro rồi bấm một phím đàn';}}
+
+function loop(){
+  if(!AU.on)return;
+  const now=performance.now();
+  AU.sm.getFloatTimeDomainData(AU.tb);
+  let s=0;for(let i=0;i<AU.tb.length;i++)s+=AU.tb[i]*AU.tb[i];
+  const rms=Math.sqrt(s/AU.tb.length);AU.rms=rms;
+  if(now<AU.calibUntil)AU.calib.push(rms);
+  else if(AU.calib.length){AU.calib.sort((a,b)=>a-b);AU.noise=Math.max(AU.calib[Math.floor(AU.calib.length/2)]||0.001,0.0005);AU.calib=[];toast('Micro sẵn sàng — hãy bấm đàn!');}
+  AU.gate=Math.max(AU.noise*3,0.004);
+  const base=AU.hist.length?Math.min(...AU.hist):rms;
+  if(now>=AU.calibUntil&&rms>AU.gate&&rms>base*AU.onsetK&&now-AU.lastOnset>110){AU.lastOnset=now;AU.pendWrong=now+170;AU.pendIdx=S.idx;}
+  AU.hist.push(rms);if(AU.hist.length>6)AU.hist.shift();
+  $('#meter').style.width=Math.min(100,Math.sqrt(rms)*400)+'%';
+  AU.an.getFloatFrequencyData(AU.fdb);AU.cache=new Map();computeFloor();
+  if(now>=AU.ignoreUntil&&now>=AU.calibUntil){
+    if(state.screen==='lesson'&&S.mode==='wait'&&!S.tl&&S.active)waitFrame(now);
+    else if(state.screen==='free')freeFrame();
+  }
+  requestAnimationFrame(loop);
+}
+function computeFloor(){const a=AU.fdb,bz=AU.binHz,i0=Math.floor(70/bz),i1=Math.floor(2500/bz),arr=[];for(let i=i0;i<i1;i+=3){const v=a[i];arr.push(isFinite(v)?v:-160);}arr.sort((x,y)=>x-y);AU.floor=arr[Math.floor(arr.length*0.5)];}
+function pk(f){const a=AU.fdb,bz=AU.binHz,lo=Math.floor(f*0.985/bz),hi=Math.ceil(f*1.015/bz);if(hi>=a.length)return -160;let mx=-160;for(let i=lo;i<=hi;i++)if(a[i]>mx)mx=a[i];return mx;}
+const HW=[1,0.8,0.6,0.4];
+function score(m){if(AU.cache.has(m))return AU.cache.get(m);const f=freq(m);let s=0;for(let h=1;h<=4;h++)s+=HW[h-1]*Math.pow(10,pk(f*h)/20);AU.cache.set(m,s);return s;}
+function present(m){
+  if(!AU.cache||AU.rms<AU.gate)return false;
+  const f=freq(m),p=Math.max(pk(f),pk(2*f));
+  if(p<AU.floor+AU.sens)return false;
+  return score(m)>1.25*Math.max(score(m-1),score(m+1));
+}
+function dominant(lo=36,hi=90){let best=-1,bs=0;for(let m=lo;m<=hi;m++){const s=score(m);if(s>bs&&present(m)){bs=s;best=m;}}return best;}
+
+/* ================= TRẠNG THÁI ================= */
+const state={screen:'home'};
+const S={item:null,events:[],els:[],stepKey:'main',mode:'wait',hands:['R'],userHands:['R'],section:-1,total:0,
+  steps:[],idx:0,mistakes:0,stepStart:0,hits:{},prev:new Set(),active:false,tl:null};
+let KBL={},KBF={};
+
+function go(sc){
+  stopTimeline();S.active=false;
+  state.screen=sc;document.body.classList.toggle('inlesson',sc==='lesson');
+  document.querySelectorAll('.screen').forEach(e=>e.hidden=e.id!==sc);
+  $('#result').hidden=true;
+  if(sc==='home')renderHome();
+  if(sc==='free'){clearKeys(KBF);updateMicUI();if(!AU.on)toast('Bấm "Bật micro" ở góc trên để bắt đầu nghe');}
+  window.scrollTo(0,0);
+}
+
+/* ================= TRANG CHỦ ================= */
+function renderHome(){
+  const p=prog();let n=0,html='';
+  const tagName={R:'Tay phải',L:'Tay trái',B:'Hai tay'};
+  CHAPTERS.forEach(ch=>{
+    html+=`<div class="chapter">${ch.title}</div><div class="grid">`;
+    ch.lessons.forEach(ls=>{n++;const ev=itemEvents(ls),hs=new Set(ev.map(e=>e.hand)),h=hs.size>1?'B':[...hs][0];
+      html+=`<div class="card" onclick="openItem('${ls.id}')"><div class="no">BÀI ${n}<span class="tag ${h}">${tagName[h]}</span>${ls.play?'<span class="tag S">Theo nhịp</span>':''}</div><h3>${ls.title}</h3><p>${ls.sub}</p><div class="stars">${starsHtml(p[ls.id]||0)}</div></div>`;});
+    html+='</div>';
+  });
+  html+=`<div class="chapter">🎵 Bài hát · học theo 5 bước</div><div class="grid">`;
+  SONGS.forEach(s=>{
+    html+=`<div class="card song" onclick="openItem('${s.id}')"><h3>${s.title}</h3><p>${s.sub}</p><div class="path">${STEPS.map(st=>`<span class="${p[s.id+':'+st.k]?'ok':''}" title="${st.label}">${st.icon}</span>`).join('')}</div><div class="stars">${starsHtml(p[s.id+':play']||0)}</div></div>`;
+  });
+  html+='</div>';
+  $('#chapters').innerHTML=html;
+}
+
+/* ================= KHUÔNG NHẠC ================= */
+const X0=170,HH=7,TB=112,BB=222;
+function P(){return S.item.pxb||(S.item.seq?66:56);}
+function yOf(n){const d=diat(n.m);return n.hand==='R'?TB-(d-30)*HH:BB-(d-18)*HH;}
+function ledgers(n,x){
+  const d=diat(n.m);let out='';
+  const mk=dd=>{const y=n.hand==='R'?TB-(dd-30)*HH:BB-(dd-18)*HH;out+=`<line class="sl" x1="${x-15}" x2="${x+15}" y1="${y}" y2="${y}"/>`;};
+  if(n.hand==='R'){for(let k=28;k>=d;k-=2)mk(k);for(let k=40;k<=d;k+=2)mk(k);}
+  else{for(let k=16;k>=d;k-=2)mk(k);for(let k=28;k<=d;k+=2)mk(k);}
+  return out;
+}
+function renderStaff(){
+  const it=S.item,px=P();let s='<g id="root">';
+  for(let k=0;k<5;k++)s+=`<line class="sl" x1="0" x2="30000" y1="${TB-k*14}" y2="${TB-k*14}"/><line class="sl" x1="0" x2="30000" y1="${BB-k*14}" y2="${BB-k*14}"/>`;
+  s+=`<rect class="cursor" x="${X0-24}" y="18" width="48" height="268" rx="12"/><g id="ng">`;
+  if(!it.seq){const bt=it.beats||4;for(let b=it.pickup||0;b<=S.total+1e-6;b+=bt){const x=b*px-Math.min(16,px*0.45);s+=`<line class="bar" x1="${x}" x2="${x}" y1="${TB-56}" y2="${BB}"/>`;}}
+  const fcount={};
+  S.events.forEach((e,i)=>{
+    const x=e.t*px,y=yOf(e);
+    s+=`<g class="ev ${e.hand}" id="n${i}">`;
+    if(!it.seq&&e.d*px>30)s+=`<rect class="tail" x="${x+6}" y="${y-3.5}" width="${e.d*px-14}" height="7" rx="3.5"/>`;
+    s+=ledgers(e,x);
+    if(isBlack(e.m))s+=`<text class="acc" x="${x-24}" y="${y+5}">♯</text>`;
+    s+=`<ellipse cx="${x}" cy="${y}" rx="9.5" ry="7" transform="rotate(-20 ${x} ${y})"/>`;
+    if(e.f){const key=e.t+e.hand;const k=fcount[key]=(fcount[key]||0)+1;s+=`<text class="fgt" x="${x+(k-1)*12}" y="${e.hand==='R'?38:254}">${e.f}</text>`;}
+    s+='</g>';
+  });
+  const groups=new Map();S.events.forEach(e=>{const k=e.t.toFixed(4);if(!groups.has(k))groups.set(k,{t:e.t,n:[]});groups.get(k).n.push(e.m);});
+  groups.forEach(g=>{s+=`<text class="nmt" x="${g.t*px}" y="280">${[...new Set(g.n)].sort((a,b)=>b-a).map(viName).join('+')}</text>`;});
+  s+=`</g><rect x="0" y="0" width="92" height="290" fill="#fff"/>
+      <text class="clef" x="14" y="${TB+12}" font-size="74">𝄞</text>
+      <text class="clef" x="16" y="${BB-14}" font-size="50">𝄢</text>
+      <text x="70" y="${TB-24}" font-size="12" font-weight="700" fill="#3b5bdb">P</text>
+      <text x="70" y="${BB-24}" font-size="12" font-weight="700" fill="#e8590c">T</text>
+      <line x1="92" x2="92" y1="${TB-56}" y2="${BB}" stroke="#495057" stroke-width="2"/></g>`;
+  $('#staff').innerHTML=s;
+  S.els=S.events.map((e,i)=>document.getElementById('n'+i));
+  $('#staff').classList.toggle('nonames',!$('#showNames').checked);
+  fitStaff();
+}
+function fitStaff(){const r=$('#root');if(!r)return;const h=$('#staff').clientHeight||290;r.setAttribute('transform',`scale(${h/290})`);}
+window.addEventListener('resize',fitStaff);
+function moveStaff(beat){const ng=$('#ng');if(ng)ng.style.transform=`translateX(${X0-beat*P()}px)`;}
+function range(){
+  const it=S.item;if(S.section<0||it.kind!=='song')return [0,S.total+1];
+  const bar=(it.beats||4)*4,pu=it.pickup||0,nSec=Math.ceil((S.total-pu)/bar-1e-6);
+  return [S.section===0?0:pu+S.section*bar, S.section>=nSec-1?S.total+1:pu+(S.section+1)*bar];
+}
+function inRange(e){const [b0,b1]=range();return e.t>=b0-1e-6&&e.t<b1-1e-6;}
+function resetMarks(){
+  const act=S.mode==='wait'?S.hands:S.mode==='play'?S.userHands:['R','L'];
+  S.els.forEach((g,i)=>{const e=S.events[i];g.classList.remove('cur','done','good','miss');g.classList.toggle('off',!act.includes(e.hand)||!inRange(e));});
+}
+
+/* ================= BÀN PHÍM ================= */
+function buildKb(el,lo,hi){
+  el.innerHTML='';const map={},whites=[];
+  for(let m=lo;m<=hi;m++)if(!isBlack(m))whites.push(m);
+  const ww=100/whites.length;
+  whites.forEach((m,i)=>{
+    const k=document.createElement('div');k.className='key w';k.dataset.m=m;k.style.left=(i*ww)+'%';k.style.width=ww+'%';
+    k.innerHTML=`<span class="fg"></span><span class="nm">${viName(m)}${m===60?'<b>giữa</b>':''}</span>`;el.appendChild(k);map[m]=k;
+    if(m+1<=hi&&isBlack(m+1)){const b=document.createElement('div');b.className='key b';b.dataset.m=m+1;b.style.left=((i+1)*ww-ww*0.31)+'%';b.style.width=(ww*0.62)+'%';b.innerHTML='<span class="fg"></span>';el.appendChild(b);map[m+1]=b;}
+  });
+  el.onpointerdown=e=>{const k=e.target.closest('.key');if(!k)return;e.preventDefault();userKey(+k.dataset.m);};
+  return map;
+}
+function clearKeys(map){Object.values(map).forEach(k=>{k.classList.remove('exp','R','L','live');k.querySelector('.fg').textContent='';});}
+function markKeys(map,evs){clearKeys(map);evs.forEach(n=>{const k=map[n.m];if(!k)return;k.classList.add('exp',n.hand);k.querySelector('.fg').textContent=n.f||'';});}
+function flash(map,m,cls){const k=map[m];if(!k)return;k.classList.remove('hit','bad');void k.offsetWidth;k.classList.add(cls);}
+
+/* ================= MỞ BÀI ================= */
+function openItem(id,stepKey){
+  const it=ALL.find(x=>x.id===id);S.item=it;S.events=itemEvents(it);
+  S.total=Math.max(...S.events.map(e=>e.t+e.d));S.section=-1;
+  let lo=48,hi=72;S.events.forEach(e=>{lo=Math.min(lo,e.m);hi=Math.max(hi,e.m);});while(isBlack(lo))lo--;while(isBlack(hi))hi++;
+  $('#lTitle').textContent=it.title;
+  const song=it.kind==='song';
+  $('#stepBar').hidden=!song;$('#secSel').hidden=!song;
+  if(song){
+    const bar=(it.beats||4)*4,pu=it.pickup||0,nSec=Math.ceil((S.total-pu)/bar-1e-6),bars=Math.round((S.total-pu)/(it.beats||4));
+    let o='<option value="-1">Cả bài</option>';for(let k=0;k<nSec;k++)o+=`<option value="${k}">Đoạn ${k+1} (ô ${k*4+1}–${Math.min(bars,k*4+4)})</option>`;
+    $('#secSel').innerHTML=o;$('#secSel').value='-1';
+  }
+  $('#speedSel').value=song?'0.75':'1';
+  go('lesson');
+  KBL=buildKb($('#kbL'),lo,hi);
+  renderStaff();
+  if(song){const p=prog();selectStep(stepKey||(STEPS.find(st=>!p[it.id+':'+st.k])||STEPS[4]).k);}
+  else{S.stepKey='main';const hs=[...new Set(S.events.map(e=>e.hand))];S.hands=hs;S.userHands=hs;S.mode=it.play?'play':'wait';$('#lTip').innerHTML='💡 '+it.tip;restart();}
+}
+function selectStep(k){
+  const it=S.item,st=STEPS.find(x=>x.k===k);S.stepKey=k;
+  S.mode=k==='listen'?'listen':k==='play'?'play':'wait';
+  S.hands=k==='rh'?['R']:k==='lh'?['L']:['R','L'];
+  const hv=$('#handSel').value;S.userHands=hv==='both'?['R','L']:[hv];
+  const p=prog();
+  $('#stepBar').innerHTML=STEPS.map((x,i)=>`<button class="${x.k===k?'sel':''}" onclick="selectStep('${x.k}')">${i+1}. ${x.icon} ${x.label}${p[it.id+':'+x.k]?'<span class="ck">✓</span>':''}</button>`).join('');
+  $('#lTip').innerHTML='💡 '+st.tip+(it.tip?' '+it.tip:'');
+  restart();
+}
+function restart(){
+  stopTimeline();$('#result').hidden=true;
+  const m=S.mode,song=S.item.kind==='song';
+  $('#playBtn').hidden=m==='wait';$('#demoBtn').hidden=m!=='wait';$('#restartBtn').hidden=m!=='wait';
+  $('#handSel').hidden=!(song&&m==='play');$('#metroLbl').hidden=m!=='play';
+  $('#playBtn').textContent=m==='listen'?'▶ Phát bài':'▶ Bắt đầu';
+  resetMarks();
+  if(m==='wait'){buildSteps();S.mistakes=0;S.active=true;setWaitStep(0);}
+  else{
+    S.active=false;const [b0]=range();moveStaff(b0);$('#staff').classList.remove('live');
+    const first=S.events.filter(e=>inRange(e)&&(m==='listen'||S.userHands.includes(e.hand)));
+    const t0=first.length?first[0].t:0;markKeys(KBL,first.filter(e=>e.t===t0));
+    $('#lProg').style.width='0';$('#lCount').textContent='';
+    setStatus(m==='listen'?'Bấm <b>▶ Phát bài</b> để nghe mẫu.':`Bấm <b>▶ Bắt đầu</b> — máy đếm ${S.item.beats===6?'1 ô nhịp':S.item.beats||4} tiếng rồi vào bài. Phím sáng = nốt sắp tới.`);
+  }
+}
+function setStatus(html,cls){const el=$('#lStatus');el.className='status'+(cls?' '+cls:'');el.innerHTML=html;}
+
+/* ================= CHẾ ĐỘ CHỜ NỐT ================= */
+function buildSteps(){
+  const map=new Map();
+  S.events.forEach((e,i)=>{if(!S.hands.includes(e.hand)||!inRange(e))return;const k=e.t.toFixed(4);if(!map.has(k))map.set(k,{t:e.t,ev:[]});map.get(k).ev.push(i);});
+  S.steps=[...map.values()].sort((a,b)=>a.t-b.t);
+}
+function expected(){const st=S.steps[S.idx];return st?[...new Set(st.ev.map(i=>S.events[i].m))]:[];}
+function setWaitStep(i){
+  if(S.steps[S.idx]&&i>0)S.steps[S.idx].ev.forEach(j=>{S.els[j].classList.remove('cur');S.els[j].classList.add('done');});
+  S.idx=i;S.stepStart=performance.now();S.hits={};
+  S.prev=new Set(i>0?S.steps[i-1].ev.map(j=>S.events[j].m):[]);
+  const st=S.steps[i];st.ev.forEach(j=>S.els[j].classList.add('cur'));
+  moveStaff(st.t);markKeys(KBL,st.ev.map(j=>S.events[j]));
+  $('#lProg').style.width=(i/S.steps.length*100)+'%';
+  $('#lCount').textContent=(i+1)+' / '+S.steps.length;
+  waitStatus();
+}
+function waitStatus(){
+  const st=S.steps[S.idx];if(!st)return;
+  const evs=st.ev.map(j=>S.events[j]);
+  const parts=evs.map(n=>`<span class="dot ${n.hand}"></span> ${n.hand==='R'?'Phải':'Trái'}${n.f?' ngón '+n.f:''}: <b>${viName(n.m)}</b>`);
+  setStatus((evs.length>1?'Bấm cùng lúc → ':'Bấm → ')+parts.join(' &nbsp;+&nbsp; ')+(AU.on?'':' <span style="color:#868e96;font-weight:400">· micro đang tắt</span>'));
+}
+function registerHit(m,t){if(S.hits[m]!=null)return;S.hits[m]=t;flash(KBL,m,'hit');checkStep();}
+function registerWrong(m){
+  S.mistakes++;flash(KBL,m,'bad');
+  setStatus(`✗ Bạn vừa bấm <b>${viName(m)}</b> — cần <b>${expected().map(viName).join(' + ')}</b>`,'bad');
+  clearTimeout(S._st);S._st=setTimeout(waitStatus,1400);
+}
+function checkStep(){
+  const exp=expected(),ts=exp.map(m=>S.hits[m]);
+  if(ts.some(x=>x==null))return;
+  const mn=Math.min(...ts),mx=Math.max(...ts);
+  if(mx-mn>1500){exp.forEach(m=>{if(S.hits[m]===mn)delete S.hits[m];});return;}
+  clearTimeout(S._st);
+  if(S.idx+1>=S.steps.length){S.steps[S.idx].ev.forEach(j=>{S.els[j].classList.remove('cur');S.els[j].classList.add('done');});finishWait();}
+  else setWaitStep(S.idx+1);
+}
+function waitFrame(now){
+  const exp=expected();
+  if(AU.lastOnset>S.stepStart){for(const m of exp)if(S.hits[m]==null&&present(m))registerHit(m,now);}
+  if(AU.pendWrong&&now>=AU.pendWrong){
+    AU.pendWrong=0;
+    if(AU.pendIdx!==S.idx||Object.keys(S.hits).length)return;
+    const d=dominant();if(d<0)return;
+    if([...exp,...S.prev].some(e=>[0,12,19,24,-12,7,-7].includes(d-e)))return;
+    registerWrong(d);
+  }
+}
+function finishWait(){
+  S.active=false;$('#lProg').style.width='100%';
+  const r=S.mistakes/Math.max(1,S.steps.length),stars=r<=0.05?3:r<=0.2?2:1;
+  saveStars(progKey(),stars);
+  showResult(stars,stars===3?'Xuất sắc!':stars===2?'Tốt lắm!':'Hoàn thành!',`Bạn đã chơi hết ${S.steps.length} bước, sai ${S.mistakes} lần.`+(stars<3?' Chơi lại để lấy đủ 3 sao nhé.':''));
+}
+function progKey(){return S.item.kind==='song'?S.item.id+':'+S.stepKey:S.item.id;}
+
+/* ================= CHẾ ĐỘ THEO NHỊP / NGHE MẪU ================= */
+const EARLY=250,LATE=450,DEADLINE=700;
+function togglePlay(){if(S.tl){stopTimeline();restart();return;}startTimeline(S.mode==='listen'?'listen':'play');}
+function toggleDemo(){if(S.tl){stopTimeline();afterDemo();return;}startTimeline('demo');}
+function startTimeline(kind){
+  stopTimeline();const it=S.item,ctx=ensureCtx(),[b0,b1r]=range(),b1=Math.min(b1r,S.total);
+  const speed=parseFloat($('#speedSel').value),spb=60/((it.bpm||80)*speed);
+  const bt=it.beats||4,ce=it.clickEvery||1,countIn=kind==='play'?bt:0,startU=b0-countIn;
+  const bus=ctx.createGain();bus.connect(ctx.destination);
+  const lead=0.3,cT0=ctx.currentTime+lead,pT0=performance.now()+lead*1000;
+  const evs=S.events.map((e,i)=>({e,i})).filter(o=>inRange(o.e));
+  const playHands=kind==='demo'?S.hands:['R','L'];
+  const user=kind==='play'?evs.filter(o=>S.userHands.includes(o.e.hand)):[];
+  const auto=evs.filter(o=>!user.includes(o)&&playHands.includes(o.e.hand));
+  auto.forEach(o=>playTone(o.e.m,lead+(o.e.t-startU)*spb,bus,Math.min(2.2,o.e.d*spb+0.35),o.e.hand==='L'?0.15:0.2));
+  if(kind==='play'&&$('#metro').checked){const pu=it.pickup||0;for(let u=startU;u<b1-1e-6;u+=ce){const acc=Math.abs(((u-pu)%bt+bt)%bt)<1e-6;click(lead+(u-startU)*spb,bus,acc);}}
+  user.forEach(o=>{o.tt=pT0+(o.e.t-startU)*spb*1000;o.res=null;});
+  resetMarks();if(kind==='demo')S.els.forEach((g,i)=>{if(!S.hands.includes(S.events[i].hand))g.classList.add('off');});
+  S.active=false;S.tl={kind,spb,pT0,startU,b0,b1,bt,evs,user,bus,lastUsed:{},stats:{perfect:0,good:0,miss:0,wrong:0},keyKey:''};
+  $('#staff').classList.add('live');
+  if(kind==='play')$('#playBtn').textContent='■ Dừng';else if(kind==='listen')$('#playBtn').textContent='■ Dừng';else $('#demoBtn').textContent='■ Dừng';
+  requestAnimationFrame(tlFrame);
+}
+function stopTimeline(){
+  const T=S.tl;if(!T)return;S.tl=null;
+  try{T.bus.disconnect();}catch(e){}
+  $('#staff').classList.remove('live');$('#demoBtn').textContent='▶ Nghe mẫu';
+  AU.ignoreUntil=performance.now()+400;
+}
+function afterDemo(){if(S.mode==='wait'){resetMarks();S.steps.slice(0,S.idx).forEach(st=>st.ev.forEach(j=>S.els[j].classList.add('done')));S.active=true;setWaitStep(S.idx);}}
+function judge(o,res,dt){
+  o.res=res;const g=S.els[o.i];g.classList.remove('cur');g.classList.add(res==='miss'?'miss':res==='good'?'good':'done');
+  const T=S.tl;T.stats[res]++;
+  if(res!=='miss')flash(KBL,o.e.m,'hit');
+  setStatus(res==='perfect'?'✓ Hoàn hảo!':res==='good'?(dt<0?'✓ Hơi sớm':'✓ Hơi trễ'):'✗ Trượt '+viName(o.e.m),res==='miss'?'bad':'');
+}
+function tlFrame(){
+  const T=S.tl;if(!T)return;
+  const now=performance.now(),beat=T.startU+(now-T.pT0)/1000/T.spb,px=P();
+  const ng=$('#ng');if(ng)ng.style.transform=`translateX(${X0-Math.max(beat,T.startU)*px}px)`;
+  if(T.kind==='play'){
+    if(beat<T.b0){const n=Math.ceil((T.b0-beat)/(S.item.clickEvery||1));setStatus('Chuẩn bị… '+n,'big');}
+    for(const o of T.user){
+      if(o.res)continue;
+      const om=AU.lastOnset;
+      if(AU.on&&om>=o.tt-EARLY&&om<=o.tt+LATE&&om>(T.lastUsed[o.e.m]||0)&&present(o.e.m)){T.lastUsed[o.e.m]=om;const dt=om-o.tt-60;judge(o,Math.abs(dt)<=160?'perfect':'good',dt);}
+      else if(now>o.tt+DEADLINE)judge(o,'miss');
+    }
+    const next=T.user.filter(o=>!o.res);
+    const t0=next.length?next[0].e.t:null;const grp=next.filter(o=>o.e.t===t0);
+    const kk=grp.map(o=>o.i).join(',');if(kk!==T.keyKey){T.keyKey=kk;markKeys(KBL,grp.map(o=>o.e));grp.forEach(o=>S.els[o.i].classList.add('cur'));}
+  }else{
+    for(const o of T.evs){if(!o.res&&o.e.t<=beat&&(T.kind!=='demo'||S.hands.includes(o.e.hand))){o.res=1;S.els[o.i].classList.add('done');}}
+    const nx=T.evs.filter(o=>!o.res&&(T.kind!=='demo'||S.hands.includes(o.e.hand)));const t0=nx.length?nx[0].e.t:null;const kk=String(t0);
+    if(kk!==T.keyKey){T.keyKey=kk;markKeys(KBL,nx.filter(o=>o.e.t===t0).map(o=>o.e));}
+    if(beat>=T.b0)setStatus(T.kind==='demo'?'🎧 Đang phát mẫu…':'🎧 Đang phát — nhìn nốt chạy qua vạch xanh');
+  }
+  const pr=Math.max(0,Math.min(1,(beat-T.b0)/(T.b1-T.b0)));$('#lProg').style.width=(pr*100)+'%';
+  const done=T.kind==='play'?(T.user.every(o=>o.res)&&beat>=T.b1):beat>=T.b1+1;
+  if(done||beat>T.b1+3){endTimeline();return;}
+  requestAnimationFrame(tlFrame);
+}
+function endTimeline(){
+  const T=S.tl;stopTimeline();
+  if(T.kind==='demo'){afterDemo();return;}
+  if(T.kind==='listen'){saveStars(progKey(),3);selectStep('rh');toast('Xong phần nghe! Giờ tập tay phải.');return;}
+  const n=T.user.length||1,st=T.stats,pct=Math.round((st.perfect+0.7*st.good)/n*100);
+  const stars=pct>=90?3:pct>=70?2:pct>=40?1:0;
+  if(stars)saveStars(progKey(),stars);
+  $('#playBtn').textContent='▶ Bắt đầu';
+  showResult(stars,`Điểm: ${pct}%`,`Hoàn hảo ${st.perfect} · Tốt ${st.good} · Trượt ${st.miss}${st.wrong?' · Bấm nhầm '+st.wrong:''}.`+(stars<3?(parseFloat($('#speedSel').value)<1&&stars>=2?' Thử tăng tốc độ nhé!':' Chơi lại để đạt 3 sao.'):' Tuyệt vời!'));
+}
+
+/* ================= KẾT QUẢ ================= */
+function showResult(stars,title,text){
+  $('#rStars').innerHTML=starsHtml(stars);$('#rTitle').textContent=title;$('#rText').textContent=text;
+  const it=S.item;let nx=null,label='Tiếp →';
+  if(it.kind==='song'){const i=STEPS.findIndex(s=>s.k===S.stepKey);if(i<STEPS.length-1){nx=()=>{$('#result').hidden=true;selectStep(STEPS[i+1].k);};label='Bước '+(i+2)+': '+STEPS[i+1].label+' →';}else{const j=SONGS.indexOf(it);if(SONGS[j+1]){nx=()=>openItem(SONGS[j+1].id);label='Bài hát tiếp →';}}}
+  else{const j=LESSONS.indexOf(it);const n=LESSONS[j+1]||SONGS[0];nx=()=>openItem(n.id);label=LESSONS[j+1]?'Bài tiếp →':'Sang bài hát →';}
+  $('#rNext').hidden=!nx;$('#rNext').textContent=label;$('#rNext').onclick=nx;
+  $('#result').hidden=false;
+}
+
+/* ================= CHƠI TỰ DO ================= */
+let lastFree='';
+function freeFrame(){
+  const pres=[];for(let m=36;m<=96;m++)if(present(m))pres.push(m);
+  const filt=pres.filter(m=>!pres.some(p=>p<m&&[12,19,24,28,31].includes(m-p)));
+  const key=filt.join(',');if(key===lastFree)return;lastFree=key;
+  Object.values(KBF).forEach(k=>k.classList.remove('live'));
+  filt.forEach(m=>KBF[m]&&KBF[m].classList.add('live'));
+  if(filt.length){$('#fNote').textContent=filt.map(viName).join(' + ');$('#fSub').textContent=filt.map(m=>LET[m%12]+(Math.floor(m/12)-1)+' · '+freq(m).toFixed(1)+' Hz').join('   ');}
+}
+
+/* ================= NHẬP TỪ PHÍM ================= */
+function userKey(m){
+  const now=performance.now();playTone(m);
+  if(state.screen==='free'){AU.ignoreUntil=now+650;flash(KBF,m,'hit');$('#fNote').textContent=viName(m);$('#fSub').textContent='(phím trên màn hình)';lastFree='';return;}
+  if(state.screen!=='lesson')return;
+  const T=S.tl;
+  if(T&&T.kind==='play'){
+    T.lastUsed[m]=now+300;
+    let best=null;for(const o of T.user){if(o.res||o.e.m!==m)continue;const dt=now-o.tt;if(dt>=-EARLY-150&&dt<=LATE&&(!best||Math.abs(dt)<Math.abs(now-best.tt)))best=o;}
+    if(best){const dt=now-best.tt;judge(best,Math.abs(dt)<=160?'perfect':'good',dt);}else{T.stats.wrong++;flash(KBL,m,'bad');}
+    return;
+  }
+  AU.ignoreUntil=now+650;
+  if(S.mode==='wait'&&S.active&&!T){if(expected().includes(m))registerHit(m,now);else registerWrong(m);}
+}
+const KEYMAP={z:48,s:49,x:50,d:51,c:52,v:53,g:54,b:55,h:56,n:57,j:58,m:59,q:60,'2':61,w:62,'3':63,e:64,r:65,'5':66,t:67,'6':68,y:69,'7':70,u:71,i:72};
+document.addEventListener('keydown',e=>{if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||e.target.tagName==='SELECT')return;const m=KEYMAP[e.key.toLowerCase()];if(m!=null){e.preventDefault();unlockAudio();userKey(m);}});
+
+/* ================= KHỞI ĐỘNG ================= */
+$('#micBtn').onclick=()=>AU.on?micOff():micOn();
+$('#sens').onchange=e=>{Object.assign(AU,SENS[e.target.value]);store('lp_sens',e.target.value);};
+$('#showNames').onchange=e=>$('#staff').classList.toggle('nonames',!e.target.checked);
+$('#secSel').onchange=e=>{S.section=+e.target.value;restart();};
+$('#handSel').onchange=e=>{const v=e.target.value;S.userHands=v==='both'?['R','L']:[v];restart();};
+(function(){const s=store('lp_sens');if(s&&SENS[s]){$('#sens').value=s;Object.assign(AU,SENS[s]);}})();
+KBF=buildKb($('#kbF'),48,72);
+go('home');
+</script>
+</body>
+</html>
