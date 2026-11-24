@@ -46,6 +46,18 @@ window.EXTRA_SONGS = [
   tip:'Bài hát đêm giao thừa. Mỗi câu bắt đầu bằng nốt đen chấm + móc đơn.',
   rh:'G3/1 | C4/1.5 C4/0.5 C4/1 E4/1 | D4/1.5 C4/0.5 D4/1 E4/1 | C4/1.5 C4/0.5 E4/1 G4/1 | A4/3 A4/1 | G4/1.5 E4/0.5 E4/1 C4/1 | D4/1.5 C4/0.5 D4/1 E4/1 | C4/1.5 A3/0.5 A3/1 G3/1 | C4/3',
   lh:'R/1 | C3/4 | G3/4 | C3/4 | F3/4 | C3/4 | G3/4 | F3/2 G3/2 | C3/3'},
+ {id:'s_backimthang',style:'pop',chords:'C | Am | G | C | C | Am | G | C',title:'Bắc kim thang',sub:'Dân ca Nam Bộ · Dễ · bản phỏng theo trí nhớ',bpm:100,
+  tip:'Dân ca Nam Bộ, chỉ dùng 5 nốt Đô – Rê – Mi – Sol – La. Bản này soạn theo trí nhớ, nghe chỗ nào khác bản bạn biết thì báo để sửa.',
+  rh:'G4/0.5 G4/0.5 E4/1 G4/0.5 A4/0.5 G4/1 | E4/0.5 G4/0.5 A4/0.5 C5/0.5 A4/2 | G4/0.5 A4/0.5 G4/0.5 E4/0.5 D4/2 | E4/0.5 G4/0.5 E4/0.5 D4/0.5 C4/2 | C4/0.5 D4/0.5 E4/1 G4/0.5 E4/0.5 D4/1 | E4/0.5 G4/0.5 A4/0.5 G4/0.5 E4/2 | G4/0.5 A4/0.5 C5/0.5 A4/0.5 G4/0.5 E4/0.5 D4/1 | E4/0.5 D4/0.5 C4/0.5 D4/0.5 C4/2',
+  lh:'C3:5/4 | A3:1/4 | G3:1/4 | C3:5/4 | C3:5/4 | A3:1/4 | G3:1/4 | C3:5/4'},
+ {id:'s_cola',style:'soft',chords:'C | Am | C G | C | C Am | G C | Am G | C',title:'Cò lả',sub:'Dân ca đồng bằng Bắc Bộ · Dễ · bản phỏng theo trí nhớ',bpm:80,
+  tip:'"Con cò cò bay lả lả bay la…". Hát chậm, mềm mại. Bản soạn theo trí nhớ — bạn nghe thấy khác thì báo để sửa.',
+  rh:'E4/0.5 G4/0.5 A4/1 G4/0.5 E4/0.5 G4/1 | A4/0.5 C5/0.5 A4/1 G4/2 | A4/0.5 G4/0.5 A4/0.5 G4/0.5 E4/1 D4/1 | E4/0.5 D4/0.5 E4/0.5 D4/0.5 C4/2 | G4/0.5 A4/0.5 C5/1 A4/0.5 G4/0.5 E4/1 | G4/0.5 E4/0.5 D4/1 E4/2 | A4/0.5 G4/0.5 E4/1 D4/0.5 E4/0.5 G4/1 | E4/0.5 D4/0.5 C4/3',
+  lh:'C3:5/4 | A3:1/4 | C3:5/2 G3:1/2 | C3:5/4 | C3:5/2 A3:1/2 | G3:1/2 C3:5/2 | A3:1/2 G3:1/2 | C3:5/4'},
+ {id:'s_trongcom',style:'pop',chords:'Am | Am | C | G | G | C | Am | Dm',title:'Trống cơm',sub:'Dân ca Bắc Bộ · Vừa · bản phỏng theo trí nhớ',bpm:108,
+  tip:'"Tình bằng có cái trống cơm…". Bản soạn theo trí nhớ — bạn nghe thấy khác thì báo để sửa.',
+  rh:'A4/0.5 C5/0.5 D5/0.5 C5/0.5 A4/1 G4/1 | A4/0.5 G4/0.5 E4/0.5 G4/0.5 A4/2 | C5/0.5 A4/0.5 G4/0.5 E4/0.5 D4/1 E4/1 | G4/0.5 E4/0.5 D4/0.5 C4/0.5 D4/2 | D4/0.5 E4/0.5 G4/1 A4/0.5 G4/0.5 E4/1 | G4/0.5 A4/0.5 C5/0.5 A4/0.5 G4/2 | A4/0.5 G4/0.5 E4/0.5 D4/0.5 E4/1 G4/1 | E4/0.5 D4/0.5 C4/1 D4/2',
+  lh:'A3:1/4 | A3:1/4 | C3:5/4 | G3:1/4 | G3:1/4 | C3:5/4 | A3:1/4 | D3:4/4'},
 ];
 
 /* Bài luyện ngón thêm (nối sau các chương có sẵn) */
