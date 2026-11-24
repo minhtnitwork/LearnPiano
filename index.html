@@ -211,6 +211,16 @@ main{max-width:1060px;margin:0 auto;padding:16px}
       <div class="free-note" id="fNote">—</div>
       <div class="free-sub" id="fSub">Bật micro rồi bấm một phím đàn</div>
     </div>
+    <div class="panel" style="padding:14px;margin-top:12px">
+      <b>🎯 Khớp app với đàn của bạn</b>
+      <p style="margin:6px 0 10px;color:#6b7280;font-size:14px;line-height:1.5">Bấm nút dưới rồi bấm <b>một lần</b> phím <b>Đô giữa</b> trên đàn (đàn 61 phím: phím trắng thứ 15 từ trái; đàn 88 phím: thứ 24). App sẽ tự đo và khớp theo đàn — sửa được cả đàn đang để chế độ chuyển giọng/quãng tám.</p>
+      <div class="ctrls" style="margin:0">
+        <button class="btn primary" id="calBtn" onclick="startCal()">🎯 Hiệu chỉnh theo đàn của tôi</button>
+        <button class="btn" onclick="resetCal()">Đặt lại</button>
+        <label class="small"><input type="checkbox" id="octFree" checked> Không phân biệt quãng tám (dễ hơn cho người mới)</label>
+      </div>
+      <div id="calInfo" style="margin-top:8px;font-size:14px"></div>
+    </div>
     <div class="panel" style="padding:8px 8px 0;margin-top:12px">
       <div class="kb" id="kbF"></div>
       <div class="kbhint">Phím sáng xanh lá = app đang nghe thấy nốt đó.</div>
@@ -365,7 +375,7 @@ function itemEvents(it){
 }
 
 /* ================= ÂM THANH ================= */
-const AU={ctx:null,on:false,noise:0.002,gate:0.006,rms:0,hist:[],lastOnset:-1e9,pendWrong:0,pendIdx:-1,ignoreUntil:0,floor:-120,sens:22,onsetK:1.45,calibUntil:0,calib:[],cache:null};
+const AU={ctx:null,on:false,noise:0.002,gate:0.006,rms:0,hist:[],lastOnset:-1e9,pendWrong:0,pendIdx:-1,ignoreUntil:0,floor:-120,sens:22,onsetK:1.45,calibUntil:0,calib:[],cache:null,shift:0,tune:1,octFree:true,minS:{},up:{},rise:{}};
 const SENS={low:{sens:30,onsetK:1.7},mid:{sens:22,onsetK:1.45},high:{sens:15,onsetK:1.3}};
 function ensureCtx(){if(!AU.ctx)AU.ctx=new (window.AudioContext||window.webkitAudioContext)();if(AU.ctx.state!=='running')AU.ctx.resume();return AU.ctx;}
 /* iPhone: phát 1 đoạn im lặng qua thẻ <audio> để Web Audio vẫn kêu khi bật công tắc im lặng */
@@ -470,7 +480,7 @@ function loop(){
   if(now>=AU.calibUntil&&rms>AU.gate&&rms>base*AU.onsetK&&now-AU.lastOnset>110){AU.lastOnset=now;AU.pendWrong=now+170;AU.pendIdx=S.idx;}
   AU.hist.push(rms);if(AU.hist.length>6)AU.hist.shift();
   $('#meter').style.width=Math.min(100,Math.sqrt(rms)*400)+'%';
-  AU.an.getFloatFrequencyData(AU.fdb);AU.cache=new Map();computeFloor();
+  AU.an.getFloatFrequencyData(AU.fdb);AU.cache=new Map();computeFloor();if(now>=AU.calibUntil)trackRises(now);if(CAL.on)calFrame(now);
   if(now>=AU.ignoreUntil&&now>=AU.calibUntil){
     if(state.screen==='lesson'&&S.mode==='wait'&&!S.tl&&S.active)waitFrame(now);
     else if(state.screen==='free')freeFrame();
@@ -480,12 +490,24 @@ function loop(){
 function computeFloor(){const a=AU.fdb,bz=AU.binHz,i0=Math.floor(70/bz),i1=Math.floor(2500/bz),arr=[];for(let i=i0;i<i1;i+=3){const v=a[i];arr.push(isFinite(v)?v:-160);}arr.sort((x,y)=>x-y);AU.floor=arr[Math.floor(arr.length*0.5)];}
 function pk(f){const a=AU.fdb,bz=AU.binHz,lo=Math.floor(f*0.985/bz),hi=Math.ceil(f*1.015/bz);if(hi>=a.length)return -160;let mx=-160;for(let i=lo;i<=hi;i++)if(a[i]>mx)mx=a[i];return mx;}
 const HW=[1,0.8,0.6,0.4];
-function score(m){if(AU.cache.has(m))return AU.cache.get(m);const f=freq(m);let s=0;for(let h=1;h<=4;h++)s+=HW[h-1]*Math.pow(10,pk(f*h)/20);AU.cache.set(m,s);return s;}
+function fq(m){return freq(m+AU.shift)*AU.tune;}
+function score(m){if(AU.cache.has(m))return AU.cache.get(m);const f=fq(m);let s=0;for(let h=1;h<=4;h++)s+=HW[h-1]*Math.pow(10,pk(f*h)/20);AU.cache.set(m,s);return s;}
 function present(m){
   if(!AU.cache||AU.rms<AU.gate)return false;
-  const f=freq(m),p=Math.max(pk(f),pk(2*f));
+  const f=fq(m),p=Math.max(pk(f),pk(2*f));
   if(p<AU.floor+AU.sens)return false;
   return score(m)>1.25*Math.max(score(m-1),score(m+1));
+}
+function presentAny(m){return present(m)||(AU.octFree&&(present(m-12)||present(m+12)));}
+function noteOn(m){let t=Math.max(AU.lastOnset,AU.rise[m]||-1e9);if(AU.octFree)t=Math.max(t,AU.rise[m-12]||-1e9,AU.rise[m+12]||-1e9);return t;}
+/* Phát hiện phím mới theo cao độ: năng lượng của nốt tăng vọt so với mức thấp gần đây
+   (bắt được cả khi nốt trước còn ngân, không cần tiếng to vọt lên). */
+function trackRises(now){
+  for(let m=36;m<=96;m++){
+    const s=score(m);let mn=AU.minS[m];mn=mn==null?s:Math.min(mn*1.04,s);AU.minS[m]=mn;
+    if(!AU.up[m]){if(s>3.5*Math.max(mn,1e-7)&&present(m)){AU.up[m]=true;AU.rise[m]=now;}}
+    else if(s<1.3*mn)AU.up[m]=false;
+  }
 }
 function dominant(lo=36,hi=90){let best=-1,bs=0;for(let m=lo;m<=hi;m++){const s=score(m);if(s>bs&&present(m)){bs=s;best=m;}}return best;}
 
@@ -651,7 +673,7 @@ function buildSteps(){
 function expected(){const st=S.steps[S.idx];return st?[...new Set(st.ev.map(i=>S.events[i].m))]:[];}
 function setWaitStep(i){
   if(S.steps[S.idx]&&i>0)S.steps[S.idx].ev.forEach(j=>{S.els[j].classList.remove('cur');S.els[j].classList.add('done');});
-  S.idx=i;S.stepStart=performance.now();S.hits={};
+  S.idx=i;S.stepStart=performance.now();S.hits={};S.cnt={};
   S.prev=new Set(i>0?S.steps[i-1].ev.map(j=>S.events[j].m):[]);
   const st=S.steps[i];st.ev.forEach(j=>S.els[j].classList.add('cur'));
   moveStaff(st.t);markKeys(KBL,st.ev.map(j=>S.events[j]));
@@ -682,12 +704,17 @@ function checkStep(){
 }
 function waitFrame(now){
   const exp=expected();
-  if(AU.lastOnset>S.stepStart){for(const m of exp)if(S.hits[m]==null&&present(m))registerHit(m,now);}
+  for(const m of exp){
+    if(S.hits[m]!=null)continue;
+    if(!presentAny(m)){S.cnt[m]=0;continue;}
+    S.cnt[m]=(S.cnt[m]||0)+1;
+    if(noteOn(m)>S.stepStart||(!S.prev.has(m)&&S.cnt[m]>=6&&now-S.stepStart>200))registerHit(m,now);
+  }
   if(AU.pendWrong&&now>=AU.pendWrong){
     AU.pendWrong=0;
     if(AU.pendIdx!==S.idx||Object.keys(S.hits).length)return;
     const d=dominant();if(d<0)return;
-    if([...exp,...S.prev].some(e=>[0,12,19,24,-12,7,-7].includes(d-e)))return;
+    if([...exp,...S.prev].some(e=>[0,12,19,24,-12,-24,7,-7,-19].includes(d-e)))return;
     registerWrong(d);
   }
 }
@@ -745,8 +772,8 @@ function tlFrame(){
     if(beat<T.b0){const n=Math.ceil((T.b0-beat)/(S.item.clickEvery||1));setStatus('Chuẩn bị… '+n,'big');}
     for(const o of T.user){
       if(o.res)continue;
-      const om=AU.lastOnset;
-      if(AU.on&&om>=o.tt-EARLY&&om<=o.tt+LATE&&om>(T.lastUsed[o.e.m]||0)&&present(o.e.m)){T.lastUsed[o.e.m]=om;const dt=om-o.tt-60;judge(o,Math.abs(dt)<=160?'perfect':'good',dt);}
+      const om=noteOn(o.e.m);
+      if(AU.on&&om>=o.tt-EARLY&&om<=o.tt+LATE&&om>(T.lastUsed[o.e.m]||0)&&presentAny(o.e.m)){T.lastUsed[o.e.m]=om;const dt=om-o.tt-60;judge(o,Math.abs(dt)<=160?'perfect':'good',dt);}
       else if(now>o.tt+DEADLINE)judge(o,'miss');
     }
     const next=T.user.filter(o=>!o.res);
@@ -792,7 +819,7 @@ function freeFrame(){
   const key=filt.join(',');if(key===lastFree)return;lastFree=key;
   Object.values(KBF).forEach(k=>k.classList.remove('live'));
   filt.forEach(m=>KBF[m]&&KBF[m].classList.add('live'));
-  if(filt.length){$('#fNote').textContent=filt.map(viName).join(' + ');$('#fSub').textContent=filt.map(m=>LET[m%12]+(Math.floor(m/12)-1)+' · '+freq(m).toFixed(1)+' Hz').join('   ');}
+  if(filt.length){$('#fNote').textContent=filt.map(viName).join(' + ');$('#fSub').textContent=filt.map(m=>LET[m%12]+(Math.floor(m/12)-1)+' · '+fq(m).toFixed(1)+' Hz').join('   ');}
 }
 
 /* ================= NHẬP TỪ PHÍM ================= */
@@ -813,12 +840,40 @@ function userKey(m){
 const KEYMAP={z:48,s:49,x:50,d:51,c:52,v:53,g:54,b:55,h:56,n:57,j:58,m:59,q:60,'2':61,w:62,'3':63,e:64,r:65,'5':66,t:67,'6':68,y:69,'7':70,u:71,i:72};
 document.addEventListener('keydown',e=>{if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||e.target.tagName==='SELECT')return;const m=KEYMAP[e.key.toLowerCase()];if(m!=null){e.preventDefault();unlockAudio();userKey(m);}});
 
+/* ================= HIỆU CHỈNH THEO ĐÀN ================= */
+const CAL={on:false,until:0,samples:[]};
+function startCal(){
+  if(!AU.on){toast('Bật micro trước đã');return;}
+  AU.shift=0;AU.tune=1;CAL.on=true;CAL.samples=[];CAL.start=performance.now();CAL.until=0;
+  $('#calInfo').textContent='👉 Bấm phím Đô giữa một lần và giữ khoảng 1 giây…';
+}
+function refine(f){const a=AU.fdb,bz=AU.binHz;let lo=Math.floor(f*0.97/bz),hi=Math.ceil(f*1.03/bz),bi=lo;for(let i=lo;i<=hi;i++)if(a[i]>a[bi])bi=i;
+  const y0=a[bi-1],y1=a[bi],y2=a[bi+1],d=(y0-y2)/(2*(y0-2*y1+y2)||1);return (bi+(isFinite(d)?Math.max(-0.5,Math.min(0.5,d)):0))*bz;}
+function calFrame(now){
+  if(now-CAL.start>12000){CAL.on=false;$('#calInfo').textContent='Không nghe thấy tiếng đàn. Thử để điện thoại gần đàn hơn rồi bấm lại.';return;}
+  if(!CAL.until){if(AU.lastOnset>CAL.start)CAL.until=AU.lastOnset+900;return;}
+  if(now<CAL.until){const d=dominant(30,100);if(d>0){const f1=refine(freq(d)),f2=refine(freq(d)*2)/2;CAL.samples.push(pk(freq(d))>pk(freq(d)*2)-12?f1:f2);}return;}
+  CAL.on=false;
+  if(CAL.samples.length<5){$('#calInfo').textContent='Chưa nghe rõ, bấm hiệu chỉnh lại nhé.';return;}
+  const fs=CAL.samples.sort((a,b)=>a-b),f=fs[Math.floor(fs.length/2)];
+  const semis=12*Math.log2(f/freq(60)),n=Math.round(semis),cents=Math.round((semis-n)*100);
+  AU.shift=n;AU.tune=Math.pow(2,(semis-n)/12);store('lp_cal',{shift:AU.shift,tune:AU.tune});
+  const heard=LET[((60+n)%12+12)%12]+(Math.floor((60+n)/12)-1);
+  let msg=`✅ Đã khớp. Phím Đô giữa của bạn phát ra <b>${heard}</b> (${f.toFixed(1)} Hz)`;
+  msg+=n===0?'':(n%12===0?` — lệch ${Math.abs(n/12)} quãng tám, app đã tự bù.`:` — lệch ${n>0?'+':''}${n} nửa cung. Nếu bạn chắc đã bấm đúng phím Đô thì đàn đang bật dịch giọng (Transpose); app đã tự bù.`);
+  if(Math.abs(cents)>15)msg+=` Đàn hơi lệch chuẩn ${cents>0?'+':''}${cents} cent — đã bù.`;
+  $('#calInfo').innerHTML=msg;
+}
+function resetCal(){AU.shift=0;AU.tune=1;store('lp_cal',{shift:0,tune:1});$('#calInfo').textContent='Đã đặt lại về chuẩn.';}
+
 /* ================= KHỞI ĐỘNG ================= */
 $('#micBtn').onclick=()=>AU.on?micOff():micOn();
 $('#sens').onchange=e=>{Object.assign(AU,SENS[e.target.value]);store('lp_sens',e.target.value);};
 $('#showNames').onchange=e=>$('#staff').classList.toggle('nonames',!e.target.checked);
 $('#secSel').onchange=e=>{S.section=+e.target.value;restart();};
 $('#handSel').onchange=e=>{const v=e.target.value;S.userHands=v==='both'?['R','L']:[v];restart();};
+(function(){const c=store('lp_cal');if(c){AU.shift=c.shift||0;AU.tune=c.tune||1;}const o=store('lp_oct');if(o!=null){AU.octFree=!!o;$('#octFree').checked=!!o;}})();
+$('#octFree').onchange=e=>{AU.octFree=e.target.checked;store('lp_oct',AU.octFree);};
 (function(){const s=store('lp_sens');if(s&&SENS[s]){$('#sens').value=s;Object.assign(AU,SENS[s]);}})();
 KBF=buildKb($('#kbF'),48,72);
 go('home');
