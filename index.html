@@ -541,7 +541,15 @@ function present0(m){
   return score(m)>1.25*Math.max(score(m-1),score(m+1));
 }
 /* Loại hoạ âm: nốt m chỉ là âm phụ của một nốt thấp hơn đang vang mạnh (quãng 8, 12, 15, 17) */
-function harm(m,allow){for(const d of [12,19,24,28]){const p=m-d;if(allow&&allow.includes(p))continue;if(present(p)&&score(p)>=0.6*score(m))return true;}return false;}
+function amp(f){return Math.pow(10,pk(f)/20);}
+/* Nốt thấp hơn 1 quãng tám có thật sự được bấm không? Dấu hiệu: hoạ âm bậc 3 của nó (quãng 5 phía trên nốt m)
+   phải vang rõ. Loa nhỏ hay làm mất âm gốc nốt trầm, nên không thể chỉ dựa vào âm gốc. */
+function lowerWins(m){const p=m-12;return present(p)&&amp(3*fq(p))>0.25*amp(fq(m));}
+function bestOctave(m){let k=0;while(m>30&&k++<3&&lowerWins(m))m-=12;return m;}
+function harm(m,allow){
+  if(!(allow&&allow.includes(m-12))&&lowerWins(m))return true;
+  for(const d of [19,24,28]){const p=m-d;if(allow&&allow.includes(p))continue;if(present(p)&&score(p)>=0.6*score(m))return true;}
+  return false;}
 function realPresent(m,allow){return present(m)&&!harm(m,allow);}
 function presentAny(m,allow){return realPresent(m,allow)||(AU.octFree&&(realPresent(m-12,allow)||realPresent(m+12,allow)));}
 function noteOn(m){let t=Math.max(AU.lastOnset,AU.rise[m]||-1e9);if(AU.octFree)t=Math.max(t,AU.rise[m-12]||-1e9,AU.rise[m+12]||-1e9);return t;}
@@ -764,7 +772,8 @@ function waitFrame(now){
   if(AU.pendWrong&&now>=AU.pendWrong){
     AU.pendWrong=0;
     if(AU.pendIdx!==S.idx||Object.keys(S.hits).length)return;
-    const d=dominant();if(d<0)return;
+    let d=dominant();if(d<0)return;d=bestOctave(d);
+    if(d<45||AU.rms<AU.gate*2)return; /* bỏ qua tiếng ù trầm / tiếng quá nhỏ */
     if(!((AU.rise[d]||0)>AU.lastOnset-200))return; /* chỉ báo nhầm khi nốt đó vừa được bấm mới, không phải nốt cũ còn ngân */
     if([...exp,...S.prev].some(e=>[0,12,19,24,-12,-24,7,-7,-19].includes(d-e)))return;
     registerWrong(d);
@@ -893,14 +902,20 @@ function showResult(stars,title,text){
 }
 
 /* ================= CHƠI TỰ DO ================= */
-let lastFree='';
+let lastFree='',FR={k:'',n:0};
 function freeFrame(){
-  const d=dominant(36,96);const filt=[];
-  if(d>0){const sd=score(d);for(let m=36;m<=96;m++)if(m===d||(realPresent(m)&&score(m)>=0.45*sd&&!harm(m)&&(m-d)%12!==0))filt.push(m);}
-  const key=filt.join(',');if(key===lastFree)return;lastFree=key;
+  if(AU.rms<AU.gate*1.5)return;
+  let d=dominant(40,96);if(d<0)return;d=bestOctave(d);
+  if(performance.now()-(AU.rise[d]||0)>400)return;   /* chỉ cập nhật ngay sau khi nốt đó vừa được bấm */
+  const sd=score(d),filt=[d];
+  for(let m=40;m<=96;m++)if(m!==d&&(m-d)%12!==0&&realPresent(m)&&score(m)>=0.6*sd&&!harm(m)&&bestOctave(m)===m)filt.push(m);
+  filt.sort((a,b)=>a-b);const key=filt.join(',');
+  if(key===FR.k)FR.n++;else{FR.k=key;FR.n=1;}
+  if(FR.n<6||key===lastFree)return;lastFree=key;   /* chỉ đổi chữ khi nghe ổn định ~4 khung hình */
   Object.values(KBF).forEach(k=>k.classList.remove('live'));
   filt.forEach(m=>KBF[m]&&KBF[m].classList.add('live'));
-  if(filt.length){$('#fNote').textContent=filt.map(viName).join(' + ');$('#fSub').textContent=filt.map(m=>LET[m%12]+(Math.floor(m/12)-1)+' · '+fq(m).toFixed(1)+' Hz').join('   ');}
+  $('#fNote').textContent=filt.map(viName).join(' + ');
+  $('#fSub').textContent=filt.map(m=>LET[m%12]+(Math.floor(m/12)-1)+' · '+fq(m).toFixed(1)+' Hz').join('   ');
 }
 
 /* ================= NHẬP TỪ PHÍM ================= */
