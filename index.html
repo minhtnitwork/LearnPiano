@@ -228,20 +228,10 @@ main{max-width:1060px;margin:0 auto;padding:16px}
       <button class="btn ghost" onclick="go('home')">←</button>
       <h2>Kiểm tra micro · Chơi tự do</h2>
     </div>
-    <div class="tip">Bấm từng phím trên đàn thật — tên nốt app nghe được sẽ hiện lên. Nếu app không bắt được nốt, chọn <b>Độ nhạy: Cao</b>; nếu nhận nhầm khi không ai chơi, chọn <b>Thấp</b>. Đặt điện thoại cách đàn khoảng 0,5–1 m. Trên iPhone, tắt chế độ <b>Im lặng</b> để nghe được tiếng mẫu.</div>
+    <div class="tip">Bấm từng phím trên đàn thật — tên nốt app nghe được sẽ hiện lên. Nếu app không bắt được nốt, chọn <b>Độ nhạy: Cao</b>; nếu nhận nhầm khi không ai chơi, chọn <b>Thấp</b>. Đặt điện thoại cách đàn khoảng 0,5–1 m. Đô giữa = phím trắng thứ 15 từ trái trên đàn CT-S200. Trên iPhone, tắt chế độ <b>Im lặng</b> để nghe được tiếng mẫu.</div>
     <div class="panel">
       <div class="free-note" id="fNote">—</div>
       <div class="free-sub" id="fSub">Bật micro rồi bấm một phím đàn</div>
-    </div>
-    <div class="panel" style="padding:14px;margin-top:12px">
-      <b>🎯 Khớp app với đàn của bạn</b>
-      <p style="margin:6px 0 10px;color:#6b7280;font-size:14px;line-height:1.5">Bấm nút dưới rồi bấm <b>một lần</b> phím <b>Đô giữa</b> trên đàn (đàn 61 phím: phím trắng thứ 15 từ trái; đàn 88 phím: thứ 24). App sẽ tự đo và khớp theo đàn — sửa được cả đàn đang để chế độ chuyển giọng/quãng tám.</p>
-      <div class="ctrls" style="margin:0">
-        <button class="btn primary" id="calBtn" onclick="startCal()">🎯 Hiệu chỉnh theo đàn của tôi</button>
-        <button class="btn" onclick="resetCal()">Đặt lại</button>
-        <label class="small"><input type="checkbox" id="octFree"> Không phân biệt quãng tám (chỉ bật nếu app hay bỏ sót nốt)</label>
-      </div>
-      <div id="calInfo" style="margin-top:8px;font-size:14px"></div>
     </div>
     <div class="panel" style="padding:8px 8px 0;margin-top:12px">
       <div class="kb" id="kbF"></div>
@@ -517,14 +507,61 @@ function loop(){
   AU.gate=Math.max(AU.noise*3,0.004);
   const base=AU.hist.length?Math.min(...AU.hist):rms;
   if(now>=AU.calibUntil&&rms>AU.gate&&rms>base*AU.onsetK&&now-AU.lastOnset>130){AU.lastOnset=now;AU.onsetStr=rms/Math.max(base,1e-6);AU.pendWrong=now+170;AU.pendIdx=S.idx;}
+  const rising=rms>1.12*base;
   AU.hist.push(rms);if(AU.hist.length>6)AU.hist.shift();
   $('#meter').style.width=Math.min(100,Math.sqrt(rms)*400)+'%';
-  AU.an.getFloatFrequencyData(AU.fdb);AU.cache=new Map();computeFloor();if(now>=AU.calibUntil)trackRises(now);if(CAL.on)calFrame(now);
+  if(!AU.prevFdb||AU.prevFdb.length!==AU.fdb.length)AU.prevFdb=new Float32Array(AU.fdb.length);AU.prevFdb.set(AU.fdb);
+  AU.an.getFloatFrequencyData(AU.fdb);AU.cache=new Map();computeFloor();
+  const rose=now>=AU.calibUntil&&trackRises(now);
   if(now>=AU.ignoreUntil&&now>=AU.calibUntil){
-    if(state.screen==='lesson'&&S.mode==='wait'&&!S.tl&&S.active)waitFrame(now);
-    else if(state.screen==='free')freeFrame();
+    /* lần bấm mới = tiếng gõ rõ, hoặc (bấm nối tiếp) cao độ mới xuất hiện khi âm lượng đang tăng */
+    if(!EV.on&&(AU.lastOnset===now||rose))evStart(now);
+    if(EV.on)evFrame(now);
   }
   requestAnimationFrame(loop);
+}
+/* ===== PHÁN ĐỊNH THEO "LẦN BẤM" =====
+   Mỗi khi có phím mới (tiếng gõ hoặc cao độ vọt lên), gom phổ âm 25–200 ms đầu,
+   lấy trung bình rồi phán định MỘT lần: phím nào vừa được bấm. Không xét phần đuôi tắt dần. */
+const EV={on:false,t0:0,n:0,acc:null,rms:0,end:0,lastWrong:0};
+function evStart(now){EV.on=true;EV.t0=now;EV.n=0;EV.rms=0;EV.pre=Float32Array.from(AU.prevFdb||AU.fdb);if(!EV.acc||EV.acc.length!==AU.fdb.length)EV.acc=new Float64Array(AU.fdb.length);else EV.acc.fill(0);}
+function evFrame(now){
+  if(now-EV.t0>=25){const a=AU.fdb;for(let i=0;i<a.length;i++)EV.acc[i]+=isFinite(a[i])?Math.pow(10,a[i]/10):0;EV.n++;EV.rms=Math.max(EV.rms,AU.rms);}
+  if(now-EV.t0<200||!EV.n)return;
+  EV.on=false;EV.end=now;
+  const keep={fdb:AU.fdb,cache:AU.cache,floor:AU.floor,rms:AU.rms},avg=new Float32Array(EV.acc.length);
+  for(let i=0;i<avg.length;i++)avg[i]=EV.acc[i]>0?10*Math.log10(EV.acc[i]/EV.n):-160;
+  AU.fdb=avg;AU.cache=new Map();computeFloor();AU.rms=EV.rms;
+  try{onPress(EV.t0);}finally{AU.fdb=keep.fdb;AU.cache=keep.cache;AU.floor=keep.floor;AU.rms=keep.rms;}
+}
+/* Gọi 1 lần cho mỗi lần bấm, với phổ âm đã lấy trung bình */
+/* Nốt m có thật sự vừa được bấm trong lần này không? So phổ trung bình của lần bấm với phổ ngay trước đó:
+   phải to lên rõ rệt (tiếng ngân của lần bấm trước thì chỉ nhỏ dần). */
+function pkIn(a,f){const bz=AU.binHz,lo=Math.floor(f*0.985/bz),hi=Math.ceil(f*1.015/bz);let mx=-160;for(let i=lo;i<=hi&&i<a.length;i++)if(a[i]>mx)mx=a[i];return Math.pow(10,mx/20);}
+function fresh(m){if(!EV.pre)return true;const f=fq(m);const now=pkIn(AU.fdb,f)+pkIn(AU.fdb,2*f)+pkIn(AU.fdb,3*f),before=pkIn(EV.pre,f)+pkIn(EV.pre,2*f)+pkIn(EV.pre,3*f);return now>1.45*before;}
+function onPress(t0){
+  if(AU.rms<Math.max(AU.gate*2,0.006))return;   /* quá nhỏ: chỉ là đuôi tắt dần / tiếng ồn, không phải lần bấm mới */
+  if(state.screen==='free'){showFree();return;}
+  if(state.screen!=='lesson')return;
+  const T=S.tl;
+  if(T&&T.kind==='play'){
+    for(const o of T.user){
+      if(o.res)continue;const dt=t0-o.tt;
+      if(dt<-EARLY||dt>LATE)continue;
+      if(fresh(o.e.m)&&presentAny(o.e.m,T.user.filter(x=>x.e.t===o.e.t).map(x=>x.e.m))){const d2=dt-30;judge(o,Math.abs(d2)<=160?'perfect':'good',d2);}
+    }
+    return;
+  }
+  if(S.mode!=='wait'||T||!S.active||t0<S.stepStart-60)return;
+  const exp=expected();let hit=false;
+  for(const m of exp)if(S.hits[m]==null&&fresh(m)&&presentAny(m,exp)){hit=true;registerHit(m,t0);if(!S.active||S.tl)return;}
+  if(hit||Object.keys(S.hits).length)return;
+  let d=dominant(40,96);if(d<0)return;d=bestOctave(d);
+  if(d<Math.min(48,...exp))return;                      /* tiếng ù trầm trong phòng */
+  if(!fresh(d))return; /* nốt đó phải vừa được bấm */
+  if(t0-EV.lastWrong<400)return;EV.lastWrong=t0;           /* tối đa 1 lần báo nhầm cho mỗi lần bấm */
+  if([...exp,...S.prev].some(e=>d===e))return;
+  registerWrong(d);
 }
 function computeFloor(){const a=AU.fdb,bz=AU.binHz,i0=Math.floor(70/bz),i1=Math.floor(2500/bz),arr=[];for(let i=i0;i<i1;i+=3){const v=a[i];arr.push(isFinite(v)?v:-160);}arr.sort((x,y)=>x-y);AU.floor=arr[Math.floor(arr.length*0.5)];}
 function pk(f){const a=AU.fdb,bz=AU.binHz,lo=Math.floor(f*0.985/bz),hi=Math.ceil(f*1.015/bz);if(hi>=a.length)return -160;let mx=-160;for(let i=lo;i<=hi;i++)if(a[i]>mx)mx=a[i];return mx;}
@@ -544,23 +581,29 @@ function present0(m){
 function amp(f){return Math.pow(10,pk(f)/20);}
 /* Nốt thấp hơn 1 quãng tám có thật sự được bấm không? Dấu hiệu: hoạ âm bậc 3 của nó (quãng 5 phía trên nốt m)
    phải vang rõ. Loa nhỏ hay làm mất âm gốc nốt trầm, nên không thể chỉ dựa vào âm gốc. */
-function lowerWins(m){const p=m-12;return present(p)&&amp(3*fq(p))>0.25*amp(fq(m));}
-function bestOctave(m){let k=0;while(m>30&&k++<3&&lowerWins(m))m-=12;return m;}
+function lowerWins(m,allow){if(allow&&allow.includes(m+7))return false; /* hợp âm có sẵn nốt quãng 5 thì không xét */
+  const f3=1.5*fq(m);return pk(f3)>AU.floor+AU.sens-6&&amp(f3)>0.25*Math.max(amp(fq(m)),amp(2*fq(m)));}
+/* Nốt m có phải thật ra là nốt cao hơn 1 quãng tám không? Nốt m thật thì hoạ âm bậc 3 (quãng 5 phía trên quãng 8)
+   phải vang; còn nếu chỉ có âm ở 2×tần số m mà không có âm gốc lẫn bậc 3 → đó là nốt m+12. */
+function upperWins(m){if(!present(m+12))return false;const a1=amp(fq(m)),a2=amp(2*fq(m)),a3=amp(3*fq(m));return a1<0.3*a2&&a3<0.35*a2;}
+function bestOctave(m){let k=0;while(m>30&&k++<3&&lowerWins(m))m-=12;k=0;while(m<96&&k++<3&&upperWins(m))m+=12;return m;}
 function harm(m,allow){
-  if(!(allow&&allow.includes(m-12))&&lowerWins(m))return true;
+  if(!(allow&&allow.includes(m-12))&&lowerWins(m,allow))return true;
   for(const d of [19,24,28]){const p=m-d;if(allow&&allow.includes(p))continue;if(present(p)&&score(p)>=0.6*score(m))return true;}
   return false;}
-function realPresent(m,allow){return present(m)&&!harm(m,allow);}
+function realPresent(m,allow){return present(m)&&!harm(m,allow)&&((allow&&allow.includes(m+12))||!upperWins(m));}
 function presentAny(m,allow){return realPresent(m,allow)||(AU.octFree&&(realPresent(m-12,allow)||realPresent(m+12,allow)));}
 function noteOn(m){let t=Math.max(AU.lastOnset,AU.rise[m]||-1e9);if(AU.octFree)t=Math.max(t,AU.rise[m-12]||-1e9,AU.rise[m+12]||-1e9);return t;}
 /* Phát hiện phím mới theo cao độ: năng lượng của nốt tăng vọt so với mức thấp gần đây
    (bắt được cả khi nốt trước còn ngân, không cần tiếng to vọt lên). */
 function trackRises(now){
+  let any=false;
   for(let m=36;m<=96;m++){
     const s=score(m);let mn=AU.minS[m];mn=mn==null?s:Math.min(mn*1.04,s);AU.minS[m]=mn;
-    if(!AU.up[m]){if(s>3.5*Math.max(mn,1e-7)&&realPresent(m)){AU.up[m]=true;AU.rise[m]=now;}}
+    if(!AU.up[m]){if(s>3.5*Math.max(mn,1e-7)&&present(m)){AU.up[m]=true;AU.rise[m]=now;any=true;}}
     else if(s<1.3*mn)AU.up[m]=false;
   }
+  return any;
 }
 function dominant(lo=36,hi=90){let best=-1,bs=0;for(let m=lo;m<=hi;m++){const s=score(m);if(s>bs&&present(m)){bs=s;best=m;}}return best;}
 
@@ -757,28 +800,6 @@ function checkStep(){
   if(S.idx+1>=S.steps.length){S.steps[S.idx].ev.forEach(j=>{S.els[j].classList.remove('cur');S.els[j].classList.add('done');});finishWait();}
   else setWaitStep(S.idx+1);
 }
-function waitFrame(now){
-  const exp=expected();
-  for(const m of exp){
-    if(S.hits[m]!=null)continue;
-    if(!presentAny(m,exp)){S.cnt[m]=0;continue;}
-    S.cnt[m]=(S.cnt[m]||0)+1;
-    if(S.prev.has(m)){
-      /* cùng phím với bước trước: phải là một lần bấm mới thật sự (tiếng gõ đủ mạnh hoặc cao độ vọt lên lại) */
-      const strong=AU.lastOnset>S.stepStart+40&&AU.onsetStr>=AU.onsetK+0.25;
-      if(strong||(AU.rise[m]||0)>S.stepStart+40)registerHit(m,now);
-    }else if(noteOn(m)>S.stepStart||(S.cnt[m]>=6&&now-S.stepStart>200))registerHit(m,now);
-  }
-  if(AU.pendWrong&&now>=AU.pendWrong){
-    AU.pendWrong=0;
-    if(AU.pendIdx!==S.idx||Object.keys(S.hits).length)return;
-    let d=dominant();if(d<0)return;d=bestOctave(d);
-    if(d<45||AU.rms<AU.gate*2)return; /* bỏ qua tiếng ù trầm / tiếng quá nhỏ */
-    if(!((AU.rise[d]||0)>AU.lastOnset-200))return; /* chỉ báo nhầm khi nốt đó vừa được bấm mới, không phải nốt cũ còn ngân */
-    if([...exp,...S.prev].some(e=>[0,12,19,24,-12,-24,7,-7,-19].includes(d-e)))return;
-    registerWrong(d);
-  }
-}
 function finishWait(){
   S.active=false;$('#lProg').style.width='100%';
   const r=S.mistakes/Math.max(1,S.steps.length),stars=r<=0.05?3:r<=0.2?2:1;
@@ -833,9 +854,7 @@ function tlFrame(){
     if(beat<T.b0){const n=Math.ceil((T.b0-beat)/(S.item.clickEvery||1));setStatus('Chuẩn bị… '+n,'big');}
     for(const o of T.user){
       if(o.res)continue;
-      const om=noteOn(o.e.m);
-      if(AU.on&&om>=o.tt-EARLY&&om<=o.tt+LATE&&om>(T.lastUsed[o.e.m]||0)&&presentAny(o.e.m,T.user.filter(x=>x.e.t===o.e.t).map(x=>x.e.m))){T.lastUsed[o.e.m]=om;const dt=om-o.tt-60;judge(o,Math.abs(dt)<=160?'perfect':'good',dt);}
-      else if(now>o.tt+DEADLINE)judge(o,'miss');
+      if(now>o.tt+DEADLINE)judge(o,'miss');
     }
     const next=T.user.filter(o=>!o.res);
     const t0=next.length?next[0].e.t:null;const grp=next.filter(o=>o.e.t===t0);
@@ -902,16 +921,13 @@ function showResult(stars,title,text){
 }
 
 /* ================= CHƠI TỰ DO ================= */
-let lastFree='',FR={k:'',n:0};
-function freeFrame(){
+let lastFree='';
+function showFree(){
   if(AU.rms<AU.gate*1.5)return;
-  let d=dominant(40,96);if(d<0)return;d=bestOctave(d);
-  if(performance.now()-(AU.rise[d]||0)>400)return;   /* chỉ cập nhật ngay sau khi nốt đó vừa được bấm */
+  let d=dominant(40,96);if(d<0)return;d=bestOctave(d);if(!fresh(d))return;
   const sd=score(d),filt=[d];
-  for(let m=40;m<=96;m++)if(m!==d&&(m-d)%12!==0&&realPresent(m)&&score(m)>=0.6*sd&&!harm(m)&&bestOctave(m)===m)filt.push(m);
-  filt.sort((a,b)=>a-b);const key=filt.join(',');
-  if(key===FR.k)FR.n++;else{FR.k=key;FR.n=1;}
-  if(FR.n<6||key===lastFree)return;lastFree=key;   /* chỉ đổi chữ khi nghe ổn định ~4 khung hình */
+  for(let m=40;m<=96;m++)if(m!==d&&(m-d)%12!==0&&realPresent(m)&&score(m)>=0.6*sd&&bestOctave(m)===m)filt.push(m);
+  filt.sort((a,b)=>a-b);
   Object.values(KBF).forEach(k=>k.classList.remove('live'));
   filt.forEach(m=>KBF[m]&&KBF[m].classList.add('live'));
   $('#fNote').textContent=filt.map(viName).join(' + ');
@@ -921,7 +937,7 @@ function freeFrame(){
 /* ================= NHẬP TỪ PHÍM ================= */
 function userKey(m){
   const now=performance.now();playTone(m);
-  if(state.screen==='free'){AU.ignoreUntil=now+650;flash(KBF,m,'hit');$('#fNote').textContent=viName(m);$('#fSub').textContent='(phím trên màn hình)';lastFree='';return;}
+  if(state.screen==='free'){AU.ignoreUntil=now+650;flash(KBF,m,'hit');$('#fNote').textContent=viName(m);$('#fSub').textContent='(phím trên màn hình)';return;}
   if(state.screen!=='lesson')return;
   const T=S.tl;
   if(T&&T.kind==='play'){
@@ -959,40 +975,15 @@ function handSVG(hand,on){
   s+=`<text x="31" y="41" font-size="8" text-anchor="middle" fill="${R?'#3b5bdb':'#e8590c'}" font-weight="700">${R?'PHẢI':'TRÁI'}</text></svg>`;return s;}
 function showHands(evs){const el=$('#hands');if(!el)return;const L=new Set(),Rr=new Set();evs.forEach(n=>{if(n.f)(n.hand==='R'?Rr:L).add(n.f);});el.innerHTML=handSVG('L',L)+handSVG('R',Rr);fitStaff();}
 
-/* ================= HIỆU CHỈNH THEO ĐÀN ================= */
-const CAL={on:false,until:0,samples:[]};
-function startCal(){
-  if(!AU.on){toast('Bật micro trước đã');return;}
-  AU.shift=0;AU.tune=1;CAL.on=true;CAL.samples=[];CAL.start=performance.now();CAL.until=0;
-  $('#calInfo').textContent='👉 Bấm phím Đô giữa một lần và giữ khoảng 1 giây…';
-}
-function refine(f){const a=AU.fdb,bz=AU.binHz;let lo=Math.floor(f*0.97/bz),hi=Math.ceil(f*1.03/bz),bi=lo;for(let i=lo;i<=hi;i++)if(a[i]>a[bi])bi=i;
-  const y0=a[bi-1],y1=a[bi],y2=a[bi+1],d=(y0-y2)/(2*(y0-2*y1+y2)||1);return (bi+(isFinite(d)?Math.max(-0.5,Math.min(0.5,d)):0))*bz;}
-function calFrame(now){
-  if(now-CAL.start>12000){CAL.on=false;$('#calInfo').textContent='Không nghe thấy tiếng đàn. Thử để điện thoại gần đàn hơn rồi bấm lại.';return;}
-  if(!CAL.until){if(AU.lastOnset>CAL.start)CAL.until=AU.lastOnset+900;return;}
-  if(now<CAL.until){const d=dominant(30,100);if(d>0){const f1=refine(freq(d)),f2=refine(freq(d)*2)/2;CAL.samples.push(pk(freq(d))>pk(freq(d)*2)-12?f1:f2);}return;}
-  CAL.on=false;
-  if(CAL.samples.length<5){$('#calInfo').textContent='Chưa nghe rõ, bấm hiệu chỉnh lại nhé.';return;}
-  const fs=CAL.samples.sort((a,b)=>a-b),f=fs[Math.floor(fs.length/2)];
-  const semis=12*Math.log2(f/freq(60)),n=Math.round(semis),cents=Math.round((semis-n)*100);
-  AU.shift=n;AU.tune=Math.pow(2,(semis-n)/12);store('lp_cal',{shift:AU.shift,tune:AU.tune});
-  const heard=LET[((60+n)%12+12)%12]+(Math.floor((60+n)/12)-1);
-  let msg=`✅ Đã khớp. Phím Đô giữa của bạn phát ra <b>${heard}</b> (${f.toFixed(1)} Hz)`;
-  msg+=n===0?'':(n%12===0?` — lệch ${Math.abs(n/12)} quãng tám, app đã tự bù.`:` — lệch ${n>0?'+':''}${n} nửa cung. Nếu bạn chắc đã bấm đúng phím Đô thì đàn đang bật dịch giọng (Transpose); app đã tự bù.`);
-  if(Math.abs(cents)>15)msg+=` Đàn hơi lệch chuẩn ${cents>0?'+':''}${cents} cent — đã bù.`;
-  $('#calInfo').innerHTML=msg;
-}
-function resetCal(){AU.shift=0;AU.tune=1;store('lp_cal',{shift:0,tune:1});$('#calInfo').textContent='Đã đặt lại về chuẩn.';}
-
 /* ================= KHỞI ĐỘNG ================= */
 $('#micBtn').onclick=()=>AU.on?micOff():micOn();
 $('#sens').onchange=e=>{Object.assign(AU,SENS[e.target.value]);store('lp_sens',e.target.value);};
 $('#showNames').onchange=e=>$('#staff').classList.toggle('nonames',!e.target.checked);
 $('#secSel').onchange=e=>{S.section=+e.target.value;restart();};
 $('#handSel').onchange=e=>{const v=e.target.value;S.userHands=v==='both'?['R','L']:[v];restart();};
-(function(){const c=store('lp_cal');if(c){AU.shift=c.shift||0;AU.tune=c.tune||1;}const o=store('lp_oct');if(o!=null){AU.octFree=!!o;$('#octFree').checked=!!o;}})();
-$('#octFree').onchange=e=>{AU.octFree=e.target.checked;store('lp_oct',AU.octFree);};
+/* Đàn Casio CT-S200 lên dây chuẩn: không hiệu chỉnh, không bỏ qua quãng tám. Xoá dữ liệu hiệu chỉnh cũ nếu còn. */
+try{localStorage.removeItem('lp_cal');localStorage.removeItem('lp_oct');}catch(e){}
+AU.shift=0;AU.tune=1;AU.octFree=false;
 (function(){const s=store('lp_sens');if(s&&SENS[s]){$('#sens').value=s;Object.assign(AU,SENS[s]);}})();
 KBF=buildKb($('#kbF'),48,72);
 go('home');
