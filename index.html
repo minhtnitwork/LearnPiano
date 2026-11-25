@@ -173,6 +173,7 @@ main{max-width:1060px;margin:0 auto;padding:16px}
       </div>
       <div style="display:flex;flex-direction:column;gap:8px">
         <button class="btn go" id="contBtn" onclick="continueLearning()">▶ Học tiếp</button>
+        <button class="btn" onclick="go('train')">🎹 Dạy app nghe đàn</button>
         <button class="btn" onclick="go('free')">🎧 Kiểm tra micro</button>
       </div>
       <div class="who" id="who" style="width:100%"></div>
@@ -222,6 +223,42 @@ main{max-width:1060px;margin:0 auto;padding:16px}
     </div>
   </section>
 
+  <!-- DẠY APP NGHE ĐÀN -->
+  <section class="screen" id="train" hidden>
+    <div class="topbar">
+      <button class="btn ghost" onclick="stopTrain();go('home')">←</button>
+      <h2>🎹 Dạy app nghe đàn của bạn</h2>
+      <div class="prog"><i id="trProg"></i></div>
+      <div class="count" id="trCount"></div>
+    </div>
+    <div class="tip" id="trTip">App sẽ lần lượt sáng từng phím. Mỗi phím: <b>bấm 1 lần, giữ khoảng 1 giây rồi thả</b>, chờ phím tiếp theo sáng lên. Bấm vừa phải như khi tập. Để điện thoại đúng chỗ bạn hay đặt khi học, phòng yên tĩnh. Làm 1 lần là app nhớ (lưu trên máy này).</div>
+    <div class="panel" style="padding:18px;text-align:center">
+      <div id="trTitle" style="font-size:26px;font-weight:800;color:var(--r)">Sẵn sàng?</div>
+      <div id="trSub" style="color:var(--muted);margin-top:6px;min-height:22px"></div>
+      <div id="trStatus" style="margin-top:10px;font-weight:700;min-height:24px"></div>
+      <div class="ctrls" style="justify-content:center;margin-top:12px">
+        <button class="btn primary" id="trStart" onclick="startTrain('full')">▶ Bắt đầu (42 phím, ~2 phút)</button>
+        <button class="btn" id="trQuick" onclick="startTrain('quick')">Nhanh: chỉ phím trắng (22 phím)</button>
+        <button class="btn" id="trRedo" onclick="trainRedo()" hidden>↺ Làm lại phím trước</button>
+        <button class="btn" id="trSkip" onclick="trainSkip()" hidden>Bỏ qua phím này</button>
+        <button class="btn" id="trStop" onclick="finishTrain(true)" hidden>■ Dừng</button>
+      </div>
+      <div id="trDone" hidden style="margin-top:14px">
+        <div style="font-size:18px;font-weight:700;margin-bottom:10px">✅ Xong! App đã học tiếng đàn của bạn.</div>
+        <div class="ctrls" style="justify-content:center">
+          <button class="btn primary" onclick="shareTrain()">📤 Gửi bản ghi cho Claude</button>
+          <button class="btn" onclick="go('free')">🎧 Thử ở màn Kiểm tra micro</button>
+          <button class="btn" onclick="clearTpl()">🗑 Xoá mẫu đã học</button>
+        </div>
+        <div id="trShareInfo" style="font-size:13px;color:var(--muted);margin-top:8px"></div>
+      </div>
+    </div>
+    <div class="panel" style="padding:8px 8px 0;margin-top:12px">
+      <div class="kb" id="kbT"></div>
+      <div class="kbhint">Phím sáng xanh = phím cần bấm bây giờ. Phím đã học có dấu ✓.</div>
+    </div>
+  </section>
+
   <!-- KIỂM TRA MICRO / CHƠI TỰ DO -->
   <section class="screen" id="free" hidden>
     <div class="topbar">
@@ -229,6 +266,7 @@ main{max-width:1060px;margin:0 auto;padding:16px}
       <h2>Kiểm tra micro · Chơi tự do</h2>
     </div>
     <div class="tip">Bấm từng phím trên đàn thật — tên nốt app nghe được sẽ hiện lên. Nếu app không bắt được nốt, chọn <b>Độ nhạy: Cao</b>; nếu nhận nhầm khi không ai chơi, chọn <b>Thấp</b>. Đặt điện thoại cách đàn khoảng 0,5–1 m. Đô giữa = phím trắng thứ 15 từ trái trên đàn CT-S200. Trên iPhone, tắt chế độ <b>Im lặng</b> để nghe được tiếng mẫu.</div>
+    <div class="ctrls"><button class="btn" onclick="go('train')">🎹 Dạy app nghe đàn của bạn</button><span id="tplInfo" class="small" style="color:var(--muted)"></span></div>
     <div class="panel">
       <div class="free-note" id="fNote">—</div>
       <div class="free-sub" id="fSub">Bật micro rồi bấm một phím đàn</div>
@@ -546,21 +584,37 @@ function pkIn(a,f){const bz=AU.binHz,lo=Math.floor(f*0.985/bz),hi=Math.ceil(f*1.
 function fresh(m){if(!EV.pre)return true;const f=fq(m);const now=pkIn(AU.fdb,f)+pkIn(AU.fdb,2*f)+pkIn(AU.fdb,3*f),before=pkIn(EV.pre,f)+pkIn(EV.pre,2*f)+pkIn(EV.pre,3*f);return now>1.45*before;}
 function onPress(t0){
   if(AU.rms<AU.gate*2)return;   /* quá nhỏ: chỉ là đuôi tắt dần / tiếng ồn, không phải lần bấm mới */
-  if(state.screen==='free'){showFree();return;}
+  /* "yếu" = nhỏ hơn hẳn các lần bấm gần đây → có thể chỉ là tiếng ồn: được phép nhận nốt đúng, nhưng không báo nhầm */
+  const prevMax=AU.evMax||0;AU.evMax=Math.max(prevMax*0.7,AU.rms);EV.weak=AU.rms<0.2*prevMax;
+  if(state.screen==='train'){trainPress(t0);return;}
+  const D=tplDetect(featVec(AU.fdb,EV.pre));   /* null = chưa dạy app → dùng cách nghe chung */
+  const has=m=>D&&TPL[m]!=null;                 /* phím này đã có mẫu chưa */
+  if(state.screen==='free'){if(D){if(D.length)showNotes(D);}else showFree();return;}
   if(state.screen!=='lesson')return;
   const T=S.tl;
   if(T&&T.kind==='play'){
     for(const o of T.user){
       if(o.res)continue;const dt=t0-o.tt;
       if(dt<-EARLY||dt>LATE)continue;
-      if(fresh(o.e.m)&&presentAny(o.e.m,T.user.filter(x=>x.e.t===o.e.t).map(x=>x.e.m))){const d2=dt-30;judge(o,Math.abs(d2)<=160?'perfect':'good',d2);}
+      const okNote=has(o.e.m)?D.includes(o.e.m):(fresh(o.e.m)&&presentAny(o.e.m,T.user.filter(x=>x.e.t===o.e.t).map(x=>x.e.m)));
+      if(okNote){const d2=dt-30;judge(o,Math.abs(d2)<=160?'perfect':'good',d2);}
     }
     return;
   }
   if(S.mode!=='wait'||T||!S.active||t0<S.stepStart-60)return;
   const exp=expected();let hit=false;
-  for(const m of exp)if(S.hits[m]==null&&fresh(m)&&presentAny(m,exp)){hit=true;registerHit(m,t0);if(!S.active||S.tl)return;}
+  for(const m of exp){
+    if(S.hits[m]!=null)continue;
+    const ok=has(m)?D.includes(m):(fresh(m)&&presentAny(m,exp));
+    if(ok){hit=true;registerHit(m,t0);if(!S.active||S.tl)return;}
+  }
   if(hit||Object.keys(S.hits).length)return;
+  if(D&&D.length){   /* đã dạy app: báo nhầm theo mẫu */
+    if(EV.weak)return;const w=D.find(x=>!exp.includes(x)&&!S.prev.has(x));if(w==null)return;
+    if(t0-EV.lastWrong<400)return;EV.lastWrong=t0;registerWrong(w);return;
+  }
+  if(D)return;
+  if(EV.weak)return;
   let d=dominant(40,96);if(d<0)return;d=bestOctave(d);
   if(d<Math.min(48,...exp))return;                      /* tiếng ù trầm trong phòng */
   if(!fresh(d))return; /* nốt đó phải vừa được bấm */
@@ -627,7 +681,8 @@ function go(sc){
   document.querySelectorAll('.screen').forEach(e=>e.hidden=e.id!==sc);
   $('#result').hidden=true;
   if(sc==='home')renderHome();
-  if(sc==='free'){clearKeys(KBF);updateMicUI();if(!AU.on)toast('Bấm "Bật micro" ở góc trên để bắt đầu nghe');}
+  if(sc==='free'){clearKeys(KBF);updateMicUI();if(!AU.on)toast('Bấm "Bật micro" ở góc trên để bắt đầu nghe');const n=Object.keys(TPL).length;$('#tplInfo').textContent=n?`Đã học ${n} phím của đàn bạn`:'Chưa dạy app — app đang dùng cách nghe chung';}
+  if(sc==='train')trainScreen();
   window.scrollTo(0,0);
 }
 
@@ -929,6 +984,9 @@ function showResult(stars,title,text){
 }
 
 /* ================= CHƠI TỰ DO ================= */
+function showNotes(ns){const filt=[...new Set(ns)].sort((a,b)=>a-b);
+  Object.values(KBF).forEach(k=>k.classList.remove('live'));filt.forEach(m=>KBF[m]&&KBF[m].classList.add('live'));
+  $('#fNote').textContent=filt.map(viName).join(' + ');$('#fSub').textContent=filt.map(m=>LET[m%12]+(Math.floor(m/12)-1)+(isBlack(m)?'':' · phím trắng thứ '+whiteNo(m))).join('   ');}
 let lastFree='';
 function showFree(){
   if(AU.rms<AU.gate*1.5)return;
@@ -982,6 +1040,98 @@ function handSVG(hand,on){
     s+=`<g transform="rotate(${rot} ${x} 32)"><rect class="fing ${on.has(f)?'on':''}" x="${x-4.5}" y="${y}" width="9" height="${h+8}" rx="4.5"/>${on.has(f)?`<text class="fnum" x="${x}" y="${y+9}">${f}</text>`:''}</g>`;}
   s+=`<text x="31" y="41" font-size="8" text-anchor="middle" fill="${R?'#3b5bdb':'#e8590c'}" font-weight="700">${R?'PHẢI':'TRÁI'}</text></svg>`;return s;}
 function showHands(evs){const el=$('#hands');if(!el)return;const L=new Set(),Rr=new Set();evs.forEach(n=>{if(n.f)(n.hand==='R'?Rr:L).add(n.f);});el.innerHTML=handSVG('L',L)+handSVG('R',Rr);fitStaff();}
+
+/* ================= MẪU TIẾNG ĐÀN CỦA BẠN =================
+   Mỗi phím lưu một "dấu vân tay": năng lượng MỚI xuất hiện (sau lúc bấm so với trước lúc bấm)
+   tại tần số của từng nửa cung từ Đô2 đến Đô8. Khi học, app so lần bấm với các mẫu này. */
+const TPL_LO=36,TPL_HI=108;
+let TPL=store('lp_tpl')||{};
+function featVec(avg,pre){const v=new Array(TPL_HI-TPL_LO+1);for(let s=TPL_LO;s<=TPL_HI;s++){const f=fq(s),a=pkIn(avg,f),b=pre?pkIn(pre,f):0;v[s-TPL_LO]=Math.max(0,a-b);}return v;}
+function vnorm(v){let s=0;for(const x of v)s+=x*x;return Math.sqrt(s);}
+/* Tách lần bấm thành các phím (1 phím hoặc hợp âm) bằng cách lần lượt trừ đi mẫu khớp nhất */
+function tplDetect(v){
+  const keys=Object.keys(TPL).map(Number);if(keys.length<8)return null;
+  const nv=vnorm(v);if(nv<=0)return [];const r=v.slice(),out=[];
+  for(let it=0;it<4;it++){
+    let best=-1,bc=0;for(const k of keys){const T=TPL[k];let c=0;for(let i=0;i<T.length;i++)c+=r[i]*T[i];if(c>bc){bc=c;best=k;}}
+    if(best<0||bc<(it===0?TPLTH.first:TPLTH.next)*nv)break;
+    out.push(best);const T=TPL[best];for(let i=0;i<r.length;i++)r[i]=Math.max(0,r[i]-bc*T[i]);
+  }
+  return out;
+}
+const TPLTH={first:0.5,next:0.35};
+function clearTpl(){TPL={};store('lp_tpl',{});toast('Đã xoá mẫu. App quay về cách nghe chung.');trainScreen();}
+
+/* ----- màn dạy app ----- */
+let KBT={};
+const TR={on:false,list:[],i:0,log:[],rec:null,chunks:[],t0:0,blob:null,mime:''};
+function whiteNo(m){let n=0;for(let k=36;k<=m;k++)if(!isBlack(k))n++;return n;}   /* CT-S200: phím trắng số 1 = Đô2 (trái cùng) */
+function keyLabel(m){const o=Math.floor(m/12)-1;
+  if(!isBlack(m))return {t:`Phím trắng thứ ${whiteNo(m)}`,s:`${viName(m)}${m===60?' giữa':''} (${LET[m%12]}${o}) — đếm từ trái sang`};
+  return {t:`Phím đen ngay bên phải phím trắng thứ ${whiteNo(m-1)}`,s:`${viName(m)} (${LET[m%12]}${o})`};}
+function trainScreen(){
+  if(!KBT[60])KBT=buildKb($('#kbT'),43,84);
+  const n=Object.keys(TPL).length;
+  $('#trDone').hidden=!(n&&!TR.on&&TR.list.length&&TR.i>=TR.list.length);
+  if(!TR.on){$('#trTitle').textContent=n?`Đã học ${n} phím`:'Sẵn sàng?';$('#trSub').textContent=n?'Có thể dạy lại bất cứ lúc nào (ví dụ khi đổi chỗ đặt điện thoại).':'';
+    ['trStart','trQuick'].forEach(id=>$('#'+id).hidden=false);['trRedo','trSkip','trStop'].forEach(id=>$('#'+id).hidden=true);}
+  markLearned();
+}
+function markLearned(){Object.values(KBT).forEach(k=>{k.classList.remove('exp','R','L');k.querySelector('.fg').textContent='';});
+  Object.keys(TPL).forEach(m=>{const k=KBT[m];if(k){k.querySelector('.fg').textContent='✓';k.querySelector('.fg').style.visibility='visible';k.querySelector('.fg').style.background='#2f9e44';}});}
+async function startTrain(kind){
+  if(!AU.on){await micOn();if(!AU.on)return;}
+  const L=[];for(let m=43;m<=84;m++)if(kind==='full'||!isBlack(m))L.push(m);
+  TR.list=L;TR.i=0;TR.log=[];TR.on=true;TR.blob=null;TR.chunks=[];
+  ['trStart','trQuick'].forEach(id=>$('#'+id).hidden=true);['trRedo','trSkip','trStop'].forEach(id=>$('#'+id).hidden=false);$('#trDone').hidden=true;
+  try{if(window.MediaRecorder&&AU.stream){TR.mime=['audio/mp4','audio/webm','audio/ogg'].find(t=>MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(t))||'';
+    TR.rec=new MediaRecorder(AU.stream,TR.mime?{mimeType:TR.mime}:undefined);TR.rec.ondataavailable=e=>{if(e.data&&e.data.size)TR.chunks.push(e.data);};
+    TR.rec.onstop=()=>{TR.blob=new Blob(TR.chunks,{type:TR.rec.mimeType||TR.mime||'audio/mp4'});};TR.rec.start(1000);}}catch(e){TR.rec=null;}
+  TR.t0=performance.now();
+  if(AU.calibUntil>performance.now())$('#trStatus').textContent='Đang đo tiếng ồn phòng… giữ yên lặng';
+  showTrainStep();
+}
+function showTrainStep(){
+  if(TR.i>=TR.list.length){finishTrain(false);return;}
+  const m=TR.list[TR.i],L=keyLabel(m);
+  $('#trTitle').textContent=L.t;$('#trSub').textContent=L.s+' · bấm 1 lần, giữ 1 giây rồi thả';
+  $('#trProg').style.width=(TR.i/TR.list.length*100)+'%';$('#trCount').textContent=(TR.i+1)+' / '+TR.list.length;
+  markLearned();const k=KBT[m];if(k){k.classList.add('exp','R');const fg=k.querySelector('.fg');fg.textContent='👇';fg.style.background='';}
+}
+function trainPress(t0){
+  if(!TR.on||TR.i>=TR.list.length)return;
+  const m=TR.list[TR.i],v=featVec(AU.fdb,EV.pre);let tot=0;v.forEach(x=>tot+=x);if(tot<=0)return;
+  const at=s=>(s>=TPL_LO&&s<=TPL_HI)?v[s-TPL_LO]:0;
+  /* kiểm tra sơ bộ: năng lượng mới phải nằm ở họ hoạ âm của phím m (gốc, quãng 8, quãng 12) */
+  const share=(at(m)+at(m+12)+at(m+19)+at(m+24))/tot;
+  let best=0,bm=-1;for(let s=36;s<=96;s++){const sh=(at(s)+at(s+12)+at(s+19)+at(s+24))/tot;if(sh>best){best=sh;bm=s;}}
+  /* chỉ bắt lỗi bấm nhầm hẳn sang phím khác; nhầm quãng tám thì bỏ qua vì loa nhỏ làm âm gốc yếu */
+  const octOk=[m,m-12,m+12,m-19,m-24].includes(bm);
+  if(share<0.25||(!octOk&&share<0.6*best)){if(!EV.weak)$('#trStatus').innerHTML=`<span style="color:var(--bad)">✗ Hình như bạn bấm phím khác (nghe giống ${viName(bm)}). Bấm lại đúng phím đang sáng nhé.</span>`;return;}
+  const n=vnorm(v);TPL[m]=v.map(x=>+(x/n).toFixed(4));store('lp_tpl',TPL);
+  TR.log.push({note:m,name:LET[m%12]+(Math.floor(m/12)-1),white_key:isBlack(m)?null:whiteNo(m),t_ms:Math.round(t0-TR.t0)});
+  $('#trStatus').innerHTML=`<span style="color:var(--ok)">✓ Đã ghi ${viName(m)}</span>`;
+  TR.i++;AU.ignoreUntil=performance.now()+900;   /* bỏ qua phần ngân/nhả phím */
+  setTimeout(showTrainStep,450);
+}
+function trainSkip(){if(!TR.on)return;TR.i++;$('#trStatus').textContent='Đã bỏ qua.';showTrainStep();}
+function trainRedo(){if(!TR.on||TR.i===0)return;TR.i--;const m=TR.list[TR.i];delete TPL[m];store('lp_tpl',TPL);TR.log=TR.log.filter(x=>x.note!==m);$('#trStatus').textContent='Bấm lại phím này.';showTrainStep();}
+function stopTrain(){if(TR.on)finishTrain(true);}
+function finishTrain(stopped){
+  TR.on=false;try{if(TR.rec&&TR.rec.state!=='inactive')TR.rec.stop();}catch(e){}
+  $('#trProg').style.width='100%';$('#trCount').textContent='';
+  ['trStart','trQuick'].forEach(id=>$('#'+id).hidden=false);['trRedo','trSkip','trStop'].forEach(id=>$('#'+id).hidden=true);
+  const n=Object.keys(TPL).length;$('#trTitle').textContent=`Đã học ${n} phím`;$('#trSub').textContent=stopped?'Đã dừng giữa chừng — các phím đã ghi vẫn được dùng.':'';$('#trStatus').textContent='';
+  $('#trDone').hidden=!n;markLearned();if(n&&!stopped)celebrate(3);
+}
+async function shareTrain(){
+  const info={app:'Hoc Piano',piano:'Casio CT-S200',date:new Date().toISOString(),sampleRate:AU.ctx&&AU.ctx.sampleRate,noise_rms:AU.noise,presses:TR.log};
+  const files=[new File([JSON.stringify(info,null,1)],'nhan-phim.json',{type:'application/json'})];
+  if(TR.blob)files.unshift(new File([TR.blob],'ghi-am-dan.'+((TR.blob.type||'').includes('webm')?'webm':'m4a'),{type:TR.blob.type||'audio/mp4'}));
+  try{if(navigator.canShare&&navigator.canShare({files})){await navigator.share({files,title:'Bản ghi đàn cho Claude'});$('#trShareInfo').textContent='Chọn "Lưu vào Tệp", rồi gửi 2 file đó vào chat với Claude.';return;}}catch(e){if(e&&e.name==='AbortError')return;}
+  files.forEach(f=>{const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;document.body.appendChild(a);a.click();a.remove();});
+  $('#trShareInfo').textContent='Đã tải 2 file xuống. Gửi chúng vào chat với Claude.';
+}
 
 /* ================= KHỞI ĐỘNG ================= */
 $('#micBtn').onclick=()=>AU.on?micOff():micOn();
