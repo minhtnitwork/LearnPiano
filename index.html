@@ -503,8 +503,8 @@ function loop(){
   let s=0;for(let i=0;i<AU.tb.length;i++)s+=AU.tb[i]*AU.tb[i];
   const rms=Math.sqrt(s/AU.tb.length);AU.rms=rms;
   if(now<AU.calibUntil)AU.calib.push(rms);
-  else if(AU.calib.length){AU.calib.sort((a,b)=>a-b);AU.noise=Math.max(AU.calib[Math.floor(AU.calib.length/2)]||0.001,0.0005);AU.calib=[];toast('Micro sẵn sàng — hãy bấm đàn!');}
-  AU.gate=Math.max(AU.noise*3,0.004);
+  else if(AU.calib.length){AU.calib.sort((a,b)=>a-b);AU.noise=Math.max(AU.calib[Math.floor(AU.calib.length/2)]||0.0005,0.00005);AU.calib=[];toast('Micro sẵn sàng — hãy bấm đàn!');}
+  AU.gate=Math.max(AU.noise*2.5,0.0003);   /* ngưỡng tương đối theo tiếng ồn nền, không cố định */
   const base=AU.hist.length?Math.min(...AU.hist):rms;
   if(now>=AU.calibUntil&&rms>AU.gate&&rms>base*AU.onsetK&&now-AU.lastOnset>130){AU.lastOnset=now;AU.onsetStr=rms/Math.max(base,1e-6);AU.pendWrong=now+170;AU.pendIdx=S.idx;}
   const rising=rms>1.12*base;
@@ -515,7 +515,12 @@ function loop(){
   const rose=now>=AU.calibUntil&&trackRises(now);
   if(now>=AU.ignoreUntil&&now>=AU.calibUntil){
     /* lần bấm mới = tiếng gõ rõ, hoặc (bấm nối tiếp) cao độ mới xuất hiện khi âm lượng đang tăng */
-    if(!EV.on&&(AU.lastOnset===now||rose))evStart(now);
+    /* bắt đầu phân tích một lần bấm: phải vượt rõ tiếng ồn nền.
+       Tiếng gõ phím thật (âm lượng vọt lên) luôn bắt đầu lại từ đầu, kể cả khi đang phân tích dở. */
+    if(AU.rms>AU.gate*3){
+      if(AU.lastOnset===now&&(!EV.on||AU.rms>2.5*EV.r0))evStart(now);
+      else if(!EV.on&&rose)evStart(now);
+    }
     if(EV.on)evFrame(now);
   }
   requestAnimationFrame(loop);
@@ -524,7 +529,7 @@ function loop(){
    Mỗi khi có phím mới (tiếng gõ hoặc cao độ vọt lên), gom phổ âm 25–200 ms đầu,
    lấy trung bình rồi phán định MỘT lần: phím nào vừa được bấm. Không xét phần đuôi tắt dần. */
 const EV={on:false,t0:0,n:0,acc:null,rms:0,end:0,lastWrong:0};
-function evStart(now){EV.on=true;EV.t0=now;EV.n=0;EV.rms=0;EV.pre=Float32Array.from(AU.prevFdb||AU.fdb);if(!EV.acc||EV.acc.length!==AU.fdb.length)EV.acc=new Float64Array(AU.fdb.length);else EV.acc.fill(0);}
+function evStart(now){EV.on=true;EV.t0=now;EV.n=0;EV.rms=0;EV.r0=AU.rms;EV.pre=Float32Array.from(AU.prevFdb||AU.fdb);if(!EV.acc||EV.acc.length!==AU.fdb.length)EV.acc=new Float64Array(AU.fdb.length);else EV.acc.fill(0);}
 function evFrame(now){
   if(now-EV.t0>=25){const a=AU.fdb;for(let i=0;i<a.length;i++)EV.acc[i]+=isFinite(a[i])?Math.pow(10,a[i]/10):0;EV.n++;EV.rms=Math.max(EV.rms,AU.rms);}
   if(now-EV.t0<200||!EV.n)return;
@@ -540,7 +545,7 @@ function evFrame(now){
 function pkIn(a,f){const bz=AU.binHz,lo=Math.floor(f*0.985/bz),hi=Math.ceil(f*1.015/bz);let mx=-160;for(let i=lo;i<=hi&&i<a.length;i++)if(a[i]>mx)mx=a[i];return Math.pow(10,mx/20);}
 function fresh(m){if(!EV.pre)return true;const f=fq(m);const now=pkIn(AU.fdb,f)+pkIn(AU.fdb,2*f)+pkIn(AU.fdb,3*f),before=pkIn(EV.pre,f)+pkIn(EV.pre,2*f)+pkIn(EV.pre,3*f);return now>1.45*before;}
 function onPress(t0){
-  if(AU.rms<Math.max(AU.gate*2,0.006))return;   /* quá nhỏ: chỉ là đuôi tắt dần / tiếng ồn, không phải lần bấm mới */
+  if(AU.rms<AU.gate*2)return;   /* quá nhỏ: chỉ là đuôi tắt dần / tiếng ồn, không phải lần bấm mới */
   if(state.screen==='free'){showFree();return;}
   if(state.screen!=='lesson')return;
   const T=S.tl;
@@ -582,14 +587,17 @@ function amp(f){return Math.pow(10,pk(f)/20);}
 /* Nốt thấp hơn 1 quãng tám có thật sự được bấm không? Dấu hiệu: hoạ âm bậc 3 của nó (quãng 5 phía trên nốt m)
    phải vang rõ. Loa nhỏ hay làm mất âm gốc nốt trầm, nên không thể chỉ dựa vào âm gốc. */
 function lowerWins(m,allow){if(allow&&allow.includes(m+7))return false; /* hợp âm có sẵn nốt quãng 5 thì không xét */
-  const f3=1.5*fq(m);return pk(f3)>AU.floor+AU.sens-6&&amp(f3)>0.25*Math.max(amp(fq(m)),amp(2*fq(m)));}
+  if(m<55)return false; /* dưới Sol thấp: loa nhỏ tạo âm "ma" dễ gây nhầm, và các phím trầm hơn hầu như không dùng */
+  const f3=1.5*fq(m);if(EV.pre&&pkIn(AU.fdb,f3)<1.45*pkIn(EV.pre,f3))return false; /* nốt thấp phải vừa được bấm */
+  return pk(f3)>AU.floor+AU.sens-6&&amp(f3)>0.25*Math.max(amp(fq(m)),amp(2*fq(m)));}
 /* Nốt m có phải thật ra là nốt cao hơn 1 quãng tám không? Nốt m thật thì hoạ âm bậc 3 (quãng 5 phía trên quãng 8)
    phải vang; còn nếu chỉ có âm ở 2×tần số m mà không có âm gốc lẫn bậc 3 → đó là nốt m+12. */
 function upperWins(m){if(!present(m+12))return false;const a1=amp(fq(m)),a2=amp(2*fq(m)),a3=amp(3*fq(m));return a1<0.3*a2&&a3<0.35*a2;}
 function bestOctave(m){let k=0;while(m>30&&k++<3&&lowerWins(m))m-=12;k=0;while(m<96&&k++<3&&upperWins(m))m+=12;return m;}
 function harm(m,allow){
   if(!(allow&&allow.includes(m-12))&&lowerWins(m,allow))return true;
-  for(const d of [19,24,28]){const p=m-d;if(allow&&allow.includes(p))continue;if(present(p)&&score(p)>=0.6*score(m))return true;}
+  /* chỉ tính là hoạ âm nếu nốt gốc p CŨNG vừa được bấm (tiếng ù phòng / tiếng ngân cũ không tính) */
+  for(const d of [19,24,28]){const p=m-d;if(allow&&allow.includes(p))continue;if(present(p)&&fresh(p)&&score(p)>=0.6*score(m))return true;}
   return false;}
 function realPresent(m,allow){return present(m)&&!harm(m,allow)&&((allow&&allow.includes(m+12))||!upperWins(m));}
 function presentAny(m,allow){return realPresent(m,allow)||(AU.octFree&&(realPresent(m-12,allow)||realPresent(m+12,allow)));}
